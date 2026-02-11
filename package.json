@@ -7,7 +7,13 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "echo \"Tests not implemented yet\" && exit 0",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest --coverage",
+    "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch",
+    "test:unit": "NODE_OPTIONS=--experimental-vm-modules jest tests/unit",
+    "test:integration": "NODE_OPTIONS=--experimental-vm-modules jest tests/integration --runInBand --passWithNoTests",
+    "test:docker": "docker compose -f docker-compose.test.yml up -d && npm run test:integration; docker-compose -f docker-compose.test.yml down",
+    "test:setup": "docker compose -f docker-compose.test.yml up -d",
+    "test:teardown": "docker compose -f docker-compose.test.yml down",
     "lint": "eslint src/**/*.js",
     "lint:fix": "eslint src/**/*.js --fix",
     "format": "prettier --write \"src/**/*.js\"",
@@ -38,12 +44,18 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "bcryptjs": "^3.0.3",
     "eslint": "^10.0.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.5",
+    "express-validator": "^7.3.1",
     "husky": "^8.0.0",
+    "jest": "^30.2.0",
+    "jsonwebtoken": "^9.0.3",
     "lint-staged": "^16.2.7",
+    "mongodb-memory-server": "^11.0.1",
     "nodemon": "^3.1.11",
-    "prettier": "^3.8.1"
+    "prettier": "^3.8.1",
+    "supertest": "^7.2.2"
   }
 }
