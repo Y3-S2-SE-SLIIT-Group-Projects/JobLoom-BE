@@ -1,0 +1,14 @@
+node_modules/
+logs/
+coverage/
+dist/
+build/
+*.log
+.env
+.env.*
+package-lock.json
+node-express-realworld-example-app-master/
+docker-compose*.yml
+Dockerfile
+.git/
+.github/

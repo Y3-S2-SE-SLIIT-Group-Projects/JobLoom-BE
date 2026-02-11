@@ -1,0 +1,137 @@
+#!/bin/bash
+
+# Git Hook: Commit Message Validation
+# This hook validates commit messages against the Conventional Commits specification
+# with optional Jira ticket integration
+
+COMMIT_MSG_FILE="$1"
+COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
+
+# Color codes for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Configuration
+TYPES="feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert"
+SCOPES="api|ui|db|auth|core|infra|config|test|common|docs"
+MIN_LENGTH=10
+MAX_LENGTH=72
+
+# Optional: Require Jira ticket (set to false if not needed)
+REQUIRE_JIRA=true
+JIRA_PATTERN="([A-Z]{2,}[0-9]+|[0-9]+)"
+
+# Extract first line (subject)
+SUBJECT=$(echo "$COMMIT_MSG" | head -n 1)
+
+# Pattern: type(scope): description #AUTH123
+# or: type: description #AUTH123
+if [ "$REQUIRE_JIRA" = true ]; then
+    PATTERN="^(${TYPES})(\(([a-z,]+)\))?: .{${MIN_LENGTH},} #${JIRA_PATTERN}$"
+else
+    PATTERN="^(${TYPES})(\(([a-z,]+)\))?: .{${MIN_LENGTH},}$"
+fi
+
+# Validation checks
+validate_commit_message() {
+    local errors=()
+    
+    # Check if subject line is empty
+    if [ -z "$SUBJECT" ]; then
+        errors+=("Commit message cannot be empty")
+    fi
+    
+    # Check subject length
+    SUBJECT_LENGTH=${#SUBJECT}
+    if [ $SUBJECT_LENGTH -lt $MIN_LENGTH ]; then
+        errors+=("Subject line too short (min ${MIN_LENGTH} chars, got ${SUBJECT_LENGTH})")
+    fi
+    
+    if [ $SUBJECT_LENGTH -gt $MAX_LENGTH ]; then
+        errors+=("Subject line too long (max ${MAX_LENGTH} chars, got ${SUBJECT_LENGTH})")
+    fi
+    
+    # Check conventional commit format
+    if ! echo "$SUBJECT" | grep -qE "$PATTERN"; then
+        errors+=("Subject line doesn't match conventional commits format")
+    fi
+    
+    # Check if type is valid
+    if ! echo "$SUBJECT" | grep -qE "^(${TYPES})"; then
+        errors+=("Invalid commit type. Must be one of: ${TYPES}")
+    fi
+    
+    # Check for Jira ticket if required
+    if [ "$REQUIRE_JIRA" = true ]; then
+        if ! echo "$SUBJECT" | grep -qE "#${JIRA_PATTERN}"; then
+            errors+=("Missing Jira ticket reference (#123 or #AUTH123)")
+        fi
+    fi
+    
+    # Check for capitalization after colon
+    if echo "$SUBJECT" | grep -qE ": [A-Z]"; then
+        errors+=("Description should start with lowercase letter")
+    fi
+    
+    # Check for period at the end
+    if echo "$SUBJECT" | grep -qE "\.$"; then
+        errors+=("Subject line should not end with a period")
+    fi
+    
+    # Return validation result
+    if [ ${#errors[@]} -gt 0 ]; then
+        echo -e "${RED}❌ Commit message validation failed:${NC}"
+        echo ""
+        for error in "${errors[@]}"; do
+            echo -e "  ${RED}•${NC} $error"
+        done
+        echo ""
+        print_examples
+        return 1
+    fi
+    
+    echo -e "${GREEN}✅ Commit message validation passed${NC}"
+    return 0
+}
+
+print_examples() {
+    echo -e "${YELLOW}Valid commit message format:${NC}"
+    echo ""
+    echo -e "  ${GREEN}type(scope): description #AUTH123${NC}"
+    echo ""
+    echo "Examples:"
+    if [ "$REQUIRE_JIRA" = true ]; then
+        echo "  feat(api): add user authentication endpoint #AUTH123"
+        echo "  fix(ui): resolve button alignment issue #UI456"
+        echo "  docs: update API documentation #DOC789"
+        echo "  refactor(core): simplify error handling #TECH101"
+    else
+        echo "  feat(api): add user authentication endpoint"
+        echo "  fix(ui): resolve button alignment issue"
+        echo "  docs: update API documentation"
+        echo "  refactor(core): simplify error handling"
+    fi
+    echo ""
+    echo "Available types:"
+    echo "  feat     - New feature"
+    echo "  fix      - Bug fix"
+    echo "  docs     - Documentation changes"
+    echo "  style    - Code style changes (formatting, etc.)"
+    echo "  refactor - Code refactoring"
+    echo "  perf     - Performance improvements"
+    echo "  test     - Adding or updating tests"
+    echo "  chore    - Maintenance tasks"
+    echo "  ci       - CI/CD changes"
+    echo "  build    - Build system changes"
+    echo "  revert   - Revert previous commit"
+    echo ""
+    echo "Available scopes: ${SCOPES}"
+    echo ""
+    echo "See README.md for full guidelines"
+}
+
+# Run validation
+validate_commit_message
+exit $?

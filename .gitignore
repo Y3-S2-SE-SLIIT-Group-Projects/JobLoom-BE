@@ -1,5 +1,5 @@
 # Logs
-logs
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -67,8 +67,14 @@ web_modules/
 
 # dotenv environment variable files
 .env
-.env.*
+.env.local
+.env.production
+.env.staging
+.env.test
+# Keep example files
 !.env.example
+!.env.production.example
+!.env.staging.example
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache
@@ -137,3 +143,6 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Project specific
+.DS_Store
