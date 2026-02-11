@@ -1,0 +1,49 @@
+{
+  "name": "jobloom-be",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "echo \"Tests not implemented yet\" && exit 0",
+    "lint": "eslint src/**/*.js",
+    "lint:fix": "eslint src/**/*.js --fix",
+    "format": "prettier --write \"src/**/*.js\"",
+    "format:check": "prettier --check \"src/**/*.js\"",
+    "audit:check": "npm audit --audit-level=moderate",
+    "prepare": "husky install || true"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Y3-S2-SE-SLIIT-Group-Projects/JobLoom-BE.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Y3-S2-SE-SLIIT-Group-Projects/JobLoom-BE/issues"
+  },
+  "homepage": "https://github.com/Y3-S2-SE-SLIIT-Group-Projects/JobLoom-BE#readme",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.2.4",
+    "express": "^4.22.1",
+    "express-async-errors": "^3.1.1",
+    "helmet": "^8.1.0",
+    "mongoose": "^9.2.0",
+    "morgan": "^1.10.1",
+    "uuid": "^13.0.0",
+    "winston": "^3.19.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.0.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.5",
+    "husky": "^8.0.0",
+    "lint-staged": "^16.2.7",
+    "nodemon": "^3.1.11",
+    "prettier": "^3.8.1"
+  }
+}

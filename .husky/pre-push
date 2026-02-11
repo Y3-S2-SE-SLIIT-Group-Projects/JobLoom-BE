@@ -1,0 +1,69 @@
+#!/usr/bin/env sh
+
+# Pre-push hook: Prevent force push to protected branches
+
+# Get the current branch name
+current_branch=$(git symbolic-ref HEAD 2>/dev/null | sed 's/refs\/heads\///')
+
+# Protected branches
+protected_branches=("main" "develop" "staging")
+
+echo "Running pre-push checks..."
+echo "Current branch: $current_branch"
+
+# First check: Block direct push to protected branches
+for protected in "${protected_branches[@]}"; do
+  if [ "$current_branch" = "$protected" ]; then
+    echo ""
+    echo "❌ ERROR: Direct push to '$protected' branch is blocked!"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "Protected branches: ${protected_branches[*]}"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "Proper workflow:"
+    echo "  1. Create a feature branch: git checkout -b feature/your-feature"
+    echo "  2. Make your changes and commit"
+    echo "  3. Push to feature branch: git push origin feature/your-feature"
+    echo "  4. Create a Pull Request on GitHub"
+    echo ""
+    exit 1
+  fi
+done
+
+# Second check: Detect force push attempts
+while read local_ref local_sha remote_ref remote_sha
+do
+  if [ "$remote_sha" != "0000000000000000000000000000000000000000" ]; then
+    # Check if this is a force push (non-fast-forward)
+    if [ "$local_sha" != "0000000000000000000000000000000000000000" ]; then
+      # Get the merge base
+      merge_base=$(git merge-base "$local_sha" "$remote_sha" 2>/dev/null)
+      
+      # If merge base is not the remote sha, this is not a fast-forward
+      if [ "$merge_base" != "$remote_sha" ]; then
+        # Extract branch name from remote_ref
+        branch_name=$(echo "$remote_ref" | sed 's/refs\/heads\///')
+        
+        # Check if branch is protected
+        for protected in "${protected_branches[@]}"; do
+          if [ "$branch_name" = "$protected" ]; then
+            echo ""
+            echo "❌ ERROR: Force push to '$branch_name' branch is blocked!"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "Protected branches: ${protected_branches[*]}"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo ""
+            echo "Proper workflow:"
+            echo "  1. Create a feature branch from current state"
+            echo "  2. Cherry-pick or merge your changes"
+            echo "  3. Create a Pull Request for review"
+            echo ""
+            exit 1
+          fi
+        done
+      fi
+    fi
+  fi
+done
+
+echo "✅ Pre-push checks passed!"

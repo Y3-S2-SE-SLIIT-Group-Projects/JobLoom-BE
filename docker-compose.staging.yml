@@ -1,0 +1,100 @@
+# Docker Compose for Staging/Testing Environment
+# Using MongoDB Atlas Cloud - No local MongoDB needed
+version: '3.9'
+
+services:
+  # Node.js Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: testing
+    image: jobloom-app:staging-${APP_VERSION:-latest}
+    container_name: jobloom-app-staging
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: test
+      PORT: 3000
+      # MongoDB Atlas connection string for staging
+      MONGODB_URI: ${MONGODB_URI_STAGING}
+      LOG_LEVEL: ${LOG_LEVEL:-debug}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS_STAGING}
+    env_file:
+      - .env.staging
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - jobloom-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Redis for Testing
+  redis:
+    image: redis:7-alpine
+    container_name: jobloom-redis-staging
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data_staging:/data
+    networks:
+      - jobloom-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+
+  # Nginx for Staging
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: jobloom-nginx-staging
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.staging.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/logs:/var/log/nginx
+    depends_on:
+      - app
+    networks:
+      - jobloom-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  jobloom-network:
+    driver: bridge
+    name: jobloom-staging-network
+
+volumes:
+  redis_data_staging:
+    name: jobloom-redis-data-staging
