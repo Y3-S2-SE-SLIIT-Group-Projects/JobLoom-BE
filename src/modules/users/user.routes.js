@@ -1,0 +1,37 @@
+import express from 'express';
+import {
+  registerUser,
+  loginUser,
+  getUserProfile,
+  getMyProfile,
+  updateUserProfile,
+  deleteUser,
+} from './user.controller.js';
+import { protect } from '../../middleware/auth/authMiddleware.js';
+import { authorize } from '../../middleware/auth/roleMiddleware.js';
+import { registerValidation, loginValidation, updateProfileValidation } from './user.validation.js';
+import upload from '../../middleware/uploads/fileUpload.js';
+
+const router = express.Router();
+
+router.post('/register', registerValidation, registerUser);
+router.post('/login', loginValidation, loginUser);
+
+// Protected routes
+// Note: protect middleware attaches user to req.user
+
+router.get('/me', protect, getMyProfile);
+router.get('/profile/:id', protect, getUserProfile);
+router.put(
+  '/profile',
+  protect,
+  upload.fields([
+    { name: 'cv', maxCount: 1 },
+    { name: 'profileImage', maxCount: 1 },
+  ]),
+  updateProfileValidation,
+  updateUserProfile
+);
+router.delete('/account', protect, deleteUser);
+
+export default router;

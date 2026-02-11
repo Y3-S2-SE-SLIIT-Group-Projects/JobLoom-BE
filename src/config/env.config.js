@@ -83,6 +83,20 @@ class EnvConfig {
   }
 
   /**
+   * Get JWT Secret
+   */
+  get jwtSecret() {
+    return process.env.JWT_SECRET || 'your_jwt_secret';
+  }
+
+  /**
+   * Get JWT Expiration
+   */
+  get jwtExpiresIn() {
+    return process.env.JWT_EXPIRES_IN || '7d';
+  }
+
+  /**
    * Get all configuration as an object
    */
   getAll() {
