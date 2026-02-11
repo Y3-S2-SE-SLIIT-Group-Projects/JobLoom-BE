@@ -1,22 +1,34 @@
 import express from 'express';
-import cors from 'cors';
-import helmet from 'helmet';
-import morgan from 'morgan';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import 'express-async-errors';
 
 // Import configurations
 import envConfig from './config/env.config.js';
 import logger from './config/logger.config.js';
 import database from './config/database.js';
+import { SERVER_CONFIG, getServerHost, getServerUrl } from './config/server.config.js';
 
 // Import middleware
+import configureSecurityMiddleware from './middleware/security.middleware.js';
+import configureCorsMiddleware from './middleware/cors.middleware.js';
+import configureBodyParser from './middleware/body-parser.middleware.js';
+import configureRequestLogger from './middleware/request-logger.middleware.js';
 import httpInterceptor from './middleware/http-interceptor.js';
 import { errorHandler, notFoundHandler } from './middleware/error-handler.js';
 
 // Import routes
+import healthRoutes from './routes/health.routes.js';
 import routes from './routes/index.js';
-import helloService from './routes/hello/hello.service.js';
-import { sendSuccess } from './utils/response.utils.js';
+
+// Constants
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Module-level state
+let server = null;
+let isShuttingDown = false;
 
 /**
  * Create Express Application
@@ -24,159 +36,134 @@ import { sendSuccess } from './utils/response.utils.js';
 const app = express();
 
 /**
- * Security Middleware
+ * Configure Middleware
  */
-app.use(helmet());
-
-/**
- * CORS Configuration
- */
-app.use(
-  cors({
-    origin: envConfig.isDevelopment ? '*' : process.env.ALLOWED_ORIGINS?.split(',') || '*',
-    credentials: true,
-  })
-);
-
-/**
- * Body Parser Middleware
- */
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-/**
- * HTTP Request Logger (Morgan + Winston)
- */
-app.use(morgan('combined', { stream: logger.stream }));
-
-/**
- * Custom HTTP Interceptor
- */
+configureSecurityMiddleware(app);
+configureCorsMiddleware(app);
+configureBodyParser(app);
+configureRequestLogger(app);
 app.use(httpInterceptor);
 
 /**
- * Simple Health Check Endpoint (for Docker/K8s)
- * Returns 200 OK if the service is healthy
+ * Configure Routes
  */
-app.get('/health', (req, res) => {
-  const healthCheck = {
-    status: 'OK',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    environment: envConfig.env,
-    database: database.isConnected ? 'connected' : 'disconnected',
-  };
-
-  // Return 503 if database is not connected in production
-  if (!database.isConnected && envConfig.isProduction) {
-    return res.status(503).json({
-      status: 'ERROR',
-      ...healthCheck,
-      database: 'disconnected',
-    });
-  }
-
-  res.status(200).json(healthCheck);
-});
+app.use('/', healthRoutes); // Health check routes (/, /health, /healthz, /ready)
+app.use('/api', routes); // API routes
 
 /**
- * Liveness Probe (for Kubernetes)
- * Checks if the application is alive
- */
-app.get('/healthz', (req, res) => {
-  res.status(200).json({ status: 'alive' });
-});
-
-/**
- * Readiness Probe (for Kubernetes)
- * Checks if the application is ready to serve traffic
- */
-app.get('/ready', (req, res) => {
-  if (database.isConnected || envConfig.isDevelopment) {
-    res.status(200).json({ status: 'ready' });
-  } else {
-    res.status(503).json({ status: 'not ready', reason: 'database not connected' });
-  }
-});
-
-/**
- * Root Route / API Info
- */
-app.get('/', (req, res) => {
-  const healthData = helloService.getHealthStatus();
-  sendSuccess(res, 'JobLoom API is running', {
-    ...healthData,
-    apiDocs: '/api',
-    endpoints: {
-      health: '/health',
-      liveness: '/healthz',
-      readiness: '/ready',
-    },
-  });
-});
-
-/**
- * API Routes
- */
-app.use('/api', routes);
-
-/**
- * 404 Not Found Handler (must be after all routes)
+ * Error Handlers (must be last)
  */
 app.use(notFoundHandler);
-
-/**
- * Global Error Handler (must be last middleware)
- */
 app.use(errorHandler);
 
 /**
- * Start Server
+ * Initialize Application
+ * Setup logs directory and other prerequisites
  */
-const startServer = async () => {
+const initializeApp = () => {
   try {
-    // Create logs directory if it doesn't exist
-    const fs = await import('fs');
-    const path = await import('path');
-    const { fileURLToPath } = await import('url');
-
-    const __filename = fileURLToPath(import.meta.url);
-    const __dirname = path.dirname(__filename);
     const logsDir = path.join(__dirname, '../logs');
 
     if (!fs.existsSync(logsDir)) {
       fs.mkdirSync(logsDir, { recursive: true });
       logger.info('Logs directory created');
     }
+  } catch (error) {
+    logger.error('Failed to initialize application:', {
+      message: error.message,
+      stack: error.stack,
+    });
+    throw error;
+  }
+};
 
-    // Try to connect to database (optional in development)
-    try {
-      logger.info('Connecting to MongoDB...');
-      await database.connect();
-    } catch (dbError) {
-      if (envConfig.isDevelopment) {
-        logger.warn('MongoDB connection failed - continuing without database', {
-          message: dbError.message,
-        });
-        logger.warn('Some features requiring database will not be available');
-      } else {
-        throw dbError;
-      }
+/**
+ * Connect to Database
+ * Handles connection with appropriate error handling based on environment
+ */
+const connectDatabase = async () => {
+  try {
+    logger.info('Connecting to MongoDB...');
+    await database.connect();
+    logger.info('Database connected successfully');
+  } catch (dbError) {
+    if (envConfig.isDevelopment) {
+      logger.warn('MongoDB connection failed - continuing without database', {
+        message: dbError.message,
+      });
+      logger.warn('Some features requiring database will not be available');
+    } else {
+      logger.error('Database connection failed in production', {
+        message: dbError.message,
+        stack: dbError.stack,
+      });
+      throw dbError;
     }
+  }
+};
+
+/**
+ * Start Server
+ * Initializes and starts the Express server
+ */
+const startServer = async () => {
+  try {
+    // Initialize application
+    initializeApp();
+
+    // Connect to database
+    await connectDatabase();
 
     // Start listening
     const PORT = envConfig.port;
-    app.listen(PORT, () => {
-      logger.info(`Server started successfully`, {
+    const HOST = getServerHost();
+
+    server = app.listen(PORT, HOST, () => {
+      const serverUrl = getServerUrl(PORT);
+
+      logger.info('Server started successfully', {
+        host: HOST,
         port: PORT,
         environment: envConfig.env,
         nodeVersion: process.version,
+        pid: process.pid,
         database: database.isConnected ? 'Connected' : 'Not Connected',
       });
-      logger.info(`API available at http://localhost:${PORT}`);
-      logger.info(`Health check: http://localhost:${PORT}/`);
-      logger.info(`Hello World API: http://localhost:${PORT}/api/hello`);
+      logger.info(`API available at ${serverUrl}`);
+      logger.info(`Health check: ${serverUrl}/health`);
+      logger.info(`API documentation: ${serverUrl}/`);
     });
+
+    // Configure server timeouts
+    server.timeout = SERVER_CONFIG.REQUEST_TIMEOUT;
+    server.keepAliveTimeout = SERVER_CONFIG.KEEP_ALIVE_TIMEOUT;
+    server.headersTimeout = SERVER_CONFIG.HEADERS_TIMEOUT;
+
+    // Handle server errors
+    server.on('error', (error) => {
+      if (error.code === 'EADDRINUSE') {
+        logger.error(`Port ${PORT} is already in use`);
+      } else if (error.code === 'EACCES') {
+        logger.error(`Port ${PORT} requires elevated privileges`);
+      } else {
+        logger.error('Server error:', {
+          message: error.message,
+          code: error.code,
+          stack: error.stack,
+        });
+      }
+      process.exit(1);
+    });
+
+    // Log when server is closing
+    server.on('close', () => {
+      logger.info('Server closed');
+    });
+
+    // Setup process event handlers
+    setupProcessHandlers();
+
+    return server;
   } catch (error) {
     logger.error('Failed to start server:', {
       message: error.message,
@@ -188,46 +175,116 @@ const startServer = async () => {
 
 /**
  * Graceful Shutdown Handler
+ * Properly closes all connections and resources
  */
 const gracefulShutdown = async (signal) => {
   logger.info(`${signal} signal received. Starting graceful shutdown...`);
 
-  try {
-    // Close database connection
-    await database.disconnect();
+  if (isShuttingDown) {
+    logger.warn('Shutdown already in progress, ignoring signal');
+    return;
+  }
 
-    logger.info('Graceful shutdown completed');
+  isShuttingDown = true;
+
+  // Create shutdown timeout
+  const shutdownTimer = setTimeout(() => {
+    logger.error('Graceful shutdown timeout exceeded, forcing exit');
+    process.exit(1);
+  }, SERVER_CONFIG.SHUTDOWN_TIMEOUT);
+
+  try {
+    // Stop accepting new connections
+    if (server) {
+      await new Promise((resolve, reject) => {
+        server.close((err) => {
+          if (err) {
+            logger.error('Error closing HTTP server:', {
+              message: err.message,
+            });
+            reject(err);
+          } else {
+            logger.info('HTTP server closed - no longer accepting connections');
+            resolve();
+          }
+        });
+      });
+    }
+
+    // Close database connection
+    if (database.isConnected) {
+      await database.disconnect();
+      logger.info('Database connection closed');
+    }
+
+    clearTimeout(shutdownTimer);
+    logger.info('Graceful shutdown completed successfully');
     process.exit(0);
   } catch (error) {
+    clearTimeout(shutdownTimer);
     logger.error('Error during graceful shutdown:', {
       message: error.message,
+      stack: error.stack,
     });
     process.exit(1);
   }
 };
 
-// Handle shutdown signals
-process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+/**
+ * Setup Process Event Handlers
+ * Registers handlers for various process events
+ */
+const setupProcessHandlers = () => {
+  // Handle shutdown signals
+  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
-// Handle uncaught exceptions
-process.on('uncaughtException', (error) => {
-  logger.error('Uncaught Exception:', {
-    message: error.message,
-    stack: error.stack,
+  // Handle uncaught exceptions
+  process.on('uncaughtException', (error) => {
+    logger.error('Uncaught Exception:', {
+      message: error.message,
+      stack: error.stack,
+    });
+    gracefulShutdown('UNCAUGHT_EXCEPTION');
   });
-  gracefulShutdown('UNCAUGHT_EXCEPTION');
-});
 
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (reason, promise) => {
-  logger.error('Unhandled Rejection:', {
-    reason,
-    promise,
+  // Handle unhandled promise rejections
+  process.on('unhandledRejection', (reason, promise) => {
+    logger.error('Unhandled Rejection:', {
+      reason: reason instanceof Error ? reason.message : reason,
+      stack: reason instanceof Error ? reason.stack : undefined,
+      promise: promise.toString(),
+    });
+    gracefulShutdown('UNHANDLED_REJECTION');
   });
-});
 
-// Start the server
-startServer();
+  // Handle warning events
+  process.on('warning', (warning) => {
+    logger.warn('Process warning:', {
+      name: warning.name,
+      message: warning.message,
+      stack: warning.stack,
+    });
+  });
+};
 
+/**
+ * Check if this module is the main entry point
+ */
+const isMainModule = () => {
+  // For ES modules, check if this file was run directly
+  const runPath = process.argv[1];
+  if (!runPath) return false;
+
+  const modulePath = fileURLToPath(import.meta.url);
+  return runPath === modulePath || path.resolve(runPath) === modulePath;
+};
+
+// Start the server only when running directly (not when imported by tests)
+if (isMainModule()) {
+  startServer();
+}
+
+// Export app and shutdown function for testing
 export default app;
+export { startServer, gracefulShutdown };

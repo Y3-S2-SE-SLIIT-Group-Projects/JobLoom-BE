@@ -6,35 +6,77 @@ A complete MERN stack backend application with a modular, scalable architecture 
 
 - **ES Modules**: Modern JavaScript with ES6+ import/export syntax
 - **MongoDB with Mongoose**: MongoDB database integration with Mongoose ODM
+- **JWT Authentication**: Secure token-based authentication system
+- **User Management**: Complete user registration, login, and profile management
+- **Job Management**: Job posting and search functionality (basic)
+- **Application Management**: Job application tracking (basic)
+- **Review & Rating System**: Comprehensive trust and quality system with:
+  - Multi-criteria ratings (work quality, communication, punctuality, payment)
+  - Weighted rating calculations
+  - Trust score algorithm
+  - Badge system (Elite, Top Rated, Trusted, Rising Star)
+  - Review moderation and reporting
+  - Automatic user rating statistics updates
 - **Winston Logger**: Advanced logging with multiple transports and log levels
 - **HTTP Interceptor**: Request/response logging with unique request IDs
 - **Exception Filters**: Global error handling with custom exception classes
 - **Environment Configuration**: Centralized configuration service with validation
-- **Security**: Helmet for security headers, CORS configuration
+- **Security**: Helmet for security headers, CORS configuration, password hashing
 - **Modular Architecture**: Clean separation of concerns with controllers, services, and models
+- **Comprehensive Testing**: Unit and integration tests with Jest and Supertest
 
 ## Project Structure
 
 ```
 src/
 ├── config/
-│   ├── database.js          # MongoDB connection configuration
-│   ├── env.config.js        # Environment configuration service
-│   └── logger.config.js     # Winston logger setup
+│   ├── database.js              # MongoDB connection configuration
+│   ├── env.config.js            # Environment configuration service
+│   └── logger.config.js         # Winston logger setup
 ├── middleware/
-│   ├── http-interceptor.js  # Request/response interceptor
-│   ├── error-handler.js     # Global exception filter
-│   └── async-handler.js     # Async error wrapper
+│   ├── http-interceptor.js      # Request/response interceptor
+│   ├── error-handler.js         # Global exception filter
+│   ├── async-handler.js         # Async error wrapper
+│   ├── auth.middleware.js       # JWT authentication middleware
+│   ├── role.middleware.js       # Role-based access control
+│   └── validation.middleware.js # Request validation middleware
 ├── models/
-│   └── http-exception.js    # Custom exception classes
+│   └── http-exception.js        # Custom exception classes
+├── modules/
+│   ├── users/                   # User Management Module
+│   │   ├── user.model.js
+│   │   ├── user.controller.js
+│   │   ├── user.service.js
+│   │   ├── user.routes.js
+│   │   └── user.validation.js
+│   ├── jobs/                    # Job Management Module (Basic)
+│   │   ├── job.model.js
+│   │   └── job.routes.js
+│   ├── applications/            # Application Management Module (Basic)
+│   │   ├── application.model.js
+│   │   └── application.routes.js
+│   └── reviews/                 # Review & Rating Module (COMPLETE)
+│       ├── review.model.js
+│       ├── review.controller.js
+│       ├── review.service.js
+│       ├── review.routes.js
+│       └── review.validation.js
 ├── routes/
-│   ├── index.js            # Main router
+│   ├── index.js                # Main router
 │   └── hello/
 │       ├── hello.controller.js
 │       └── hello.service.js
 ├── utils/
-│   └── response.utils.js    # Standardized response helpers
-└── server.js                # Main application entry point
+│   ├── response.utils.js       # Standardized response helpers
+│   ├── jwt.utils.js            # JWT token utilities
+│   └── rating.utils.js         # Rating calculation utilities
+└── server.js                   # Main application entry point
+
+tests/
+├── unit/
+│   └── review.service.test.js  # Unit tests for rating logic
+└── integration/
+    └── review.routes.test.js   # Integration tests for API
 ```
 
 ## Prerequisites
@@ -72,6 +114,10 @@ src/
    NODE_ENV=development
    PORT=3000
    MONGODB_URI=mongodb://localhost:27017/jobloom
+   MONGO_TEST_URI=mongodb://localhost:27017/jobloom-test
+   JWT_SECRET=your-super-secret-jwt-key-change-in-production
+   JWT_EXPIRES_IN=7d
+   BCRYPT_ROUNDS=10
    LOG_LEVEL=debug
    ```
 
@@ -109,6 +155,310 @@ The server will start on `http://localhost:3000`
 ## API Endpoints
 
 ### Health Check
+
+npm run l```
+GET /
+GET /health
+GET /healthz (liveness probe)
+GET /ready (readiness probe)
+
+```
+
+Returns API health status and system information.
+
+---
+
+## Authentication & User Management
+
+### Register User
+
+```
+
+POST /api/users/register
+
+````
+
+Register a new user account.
+
+**Request Body:**
+
+```json
+{
+  "firstName": "John",
+  "lastName": "Doe",
+  "email": "john@example.com",
+  "password": "password123",
+  "role": "job_seeker",
+  "phone": "+94771234567"
+}
+````
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "User registered successfully",
+  "data": {
+    "user": {
+      "_id": "...",
+      "firstName": "John",
+      "lastName": "Doe",
+      "email": "john@example.com",
+      "role": "job_seeker",
+      "ratingStats": {
+        "averageRating": 0,
+        "totalReviews": 0
+      }
+    },
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  }
+}
+```
+
+### Login
+
+```
+POST /api/users/login
+```
+
+Login to existing account.
+
+**Request Body:**
+
+```json
+{
+  "email": "john@example.com",
+  "password": "password123"
+}
+```
+
+**Response:** Same as register (user + token)
+
+### Get Current User
+
+```
+GET /api/users/me
+Authorization: Bearer <token>
+```
+
+Get authenticated user profile.
+
+### Get User by ID
+
+```
+GET /api/users/:id
+```
+
+Get public user profile (for displaying reviewee info).
+
+### Update Profile
+
+```
+PUT /api/users/profile
+Authorization: Bearer <token>
+```
+
+Update own user profile.
+
+---
+
+## Review & Rating System (Member 4's Component)
+
+### Create Review
+
+```
+POST /api/reviews
+Authorization: Bearer <token>
+```
+
+Submit a review after job completion. **Requires accepted application**.
+
+**Request Body:**
+
+```json
+{
+  "revieweeId": "user_id_being_reviewed",
+  "jobId": "job_id",
+  "reviewerType": "job_seeker",
+  "rating": 5,
+  "comment": "Excellent employer, highly recommended!",
+  "workQuality": 5,
+  "communication": 5,
+  "punctuality": 4,
+  "paymentOnTime": 5,
+  "wouldRecommend": true
+}
+```
+
+**Business Rules:**
+
+- Can only review users you've worked with (accepted application required)
+- One review per job per user
+- Cannot review yourself
+- Rating is auto-calculated from criteria if multiple provided
+
+### Get Review by ID
+
+```
+GET /api/reviews/:id
+```
+
+Get single review details.
+
+### Update Review
+
+```
+PUT /api/reviews/:id
+Authorization: Bearer <token>
+```
+
+Update own review.
+
+**Restrictions:**
+
+- Can only edit within 7 days of creation
+- Cannot change rating after 24 hours
+- Can only edit own reviews
+
+### Delete Review
+
+```
+DELETE /api/reviews/:id
+Authorization: Bearer <token>
+```
+
+Delete own review (soft delete).
+
+### Get Reviews for User
+
+```
+GET /api/reviews/user/:userId?reviewerType=job_seeker&page=1&limit=20
+```
+
+Get all reviews for a specific user (reviewee).
+
+**Query Parameters:**
+
+- `reviewerType` (optional): Filter by reviewer type (job_seeker, employer)
+- `page` (optional): Page number (default: 1)
+- `limit` (optional): Items per page (default: 20)
+
+### Get Reviews for Job
+
+```
+GET /api/reviews/job/:jobId
+```
+
+Get all reviews related to a specific job.
+
+### Get User Rating Statistics
+
+```
+GET /api/reviews/stats/:userId
+```
+
+Get comprehensive rating statistics for a user.
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "stats": {
+      "averageRating": 4.5,
+      "totalReviews": 12,
+      "ratingDistribution": {
+        "5": 6,
+        "4": 4,
+        "3": 2,
+        "2": 0,
+        "1": 0
+      },
+      "trustScore": 95,
+      "badge": "Top Rated"
+    }
+  }
+}
+```
+
+**Badge System:**
+
+- **Elite**: 4.8+ rating with 20+ reviews
+- **Top Rated**: 4.5+ rating with 10+ reviews
+- **Trusted**: 4.0+ rating with 5+ reviews
+- **Rising Star**: 4.0+ rating with 2-4 reviews
+
+**Trust Score Algorithm:**
+
+```
+trustScore = (averageRating * 20) + min(totalReviews * 0.5, 10)
+Maximum: 110 (5 stars * 20 + 10 bonus points)
+```
+
+### Report Review
+
+```
+POST /api/reviews/:id/report
+Authorization: Bearer <token>
+```
+
+Report inappropriate review.
+
+**Request Body:**
+
+```json
+{
+  "reason": "This review contains false information and inappropriate language"
+}
+```
+
+**Note:** Reviews with 3+ reports are automatically flagged for moderation.
+
+### Get Employer Reviews
+
+```
+GET /api/reviews/employer/:employerId
+```
+
+Get all reviews for an employer (alias endpoint).
+
+### Get Job Seeker Reviews
+
+```
+GET /api/reviews/jobseeker/:jobSeekerId
+```
+
+Get all reviews for a job seeker (alias endpoint).
+
+---
+
+## Jobs & Applications (Basic Endpoints)
+
+### Get Job by ID
+
+```
+GET /api/jobs/:id
+```
+
+### Get All Jobs
+
+```
+GET /api/jobs
+```
+
+### Check Application Eligibility
+
+```
+GET /api/applications/check/:jobId/:userId
+```
+
+Check if user has accepted application for job (used for review eligibility).
+
+---
+
+### Health Check (Original)
 
 ```
 GET /
@@ -272,20 +622,111 @@ throw new NotFoundException('User not found');
 
 ## Environment Variables
 
-| Variable      | Description                               | Default                           |
-| ------------- | ----------------------------------------- | --------------------------------- |
-| `NODE_ENV`    | Environment (development/production/test) | development                       |
-| `PORT`        | Server port                               | 3000                              |
-| `MONGODB_URI` | MongoDB connection string                 | mongodb://localhost:27017/jobloom |
-| `LOG_LEVEL`   | Winston log level (error/warn/info/debug) | info                              |
+| Variable          | Description                               | Default                                        |
+| ----------------- | ----------------------------------------- | ---------------------------------------------- |
+| `NODE_ENV`        | Environment (development/production/test) | development                                    |
+| `PORT`            | Server port                               | 3000                                           |
+| `MONGODB_URI`     | MongoDB connection string                 | mongodb://localhost:27017/jobloom              |
+| `MONGO_TEST_URI`  | MongoDB test database connection string   | mongodb://localhost:27017/jobloom-test         |
+| `JWT_SECRET`      | Secret key for JWT token generation       | your-super-secret-jwt-key-change-in-production |
+| `JWT_EXPIRES_IN`  | JWT token expiration time                 | 7d                                             |
+| `BCRYPT_ROUNDS`   | Number of bcrypt hashing rounds           | 10                                             |
+| `LOG_LEVEL`       | Winston log level (error/warn/info/debug) | info                                           |
+| `ALLOWED_ORIGINS` | CORS allowed origins (comma-separated)    | \* (development), must set in production       |
 
 ## Scripts
 
-| Command       | Description                                           |
-| ------------- | ----------------------------------------------------- |
-| `npm start`   | Start the server in production mode                   |
-| `npm run dev` | Start the server in development mode with auto-reload |
-| `npm test`    | Run tests (not implemented yet)                       |
+| Command                    | Description                                           |
+| -------------------------- | ----------------------------------------------------- |
+| `npm start`                | Start the server in production mode                   |
+| `npm run dev`              | Start the server in development mode with auto-reload |
+| `npm test`                 | Run all tests with coverage                           |
+| `npm run test:watch`       | Run tests in watch mode                               |
+| `npm run test:unit`        | Run unit tests only                                   |
+| `npm run test:integration` | Run integration tests only                            |
+| `npm run lint`             | Run ESLint                                            |
+| `npm run lint:fix`         | Fix ESLint errors automatically                       |
+| `npm run format`           | Format code with Prettier                             |
+| `npm run format:check`     | Check code formatting                                 |
+
+## Testing
+
+### Quick Start
+
+```bash
+# Unit tests only (no setup required - recommended for development)
+npm run test:unit
+
+# All tests (requires MongoDB)
+npm test
+```
+
+### Running Tests
+
+```bash
+# Run unit tests only (✅ Fast, no dependencies)
+npm run test:unit
+
+# Run integration tests only (⚠️ Requires MongoDB)
+npm run test:integration
+
+# Run all tests with coverage (⚠️ Requires MongoDB)
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+```
+
+### MongoDB Setup for Integration Tests
+
+Integration tests require MongoDB. Choose one option:
+
+#### Option 1: Local MongoDB (Recommended)
+
+```bash
+# Linux
+sudo apt install mongodb && sudo systemctl start mongodb
+
+# macOS
+brew install mongodb-community && brew services start mongodb-community
+
+# Then run tests
+npm run test:integration
+```
+
+#### Option 2: Docker
+
+```bash
+# Start test database
+npm run test:setup
+
+# Run integration tests
+npm run test:integration
+
+# Stop test database
+npm run test:teardown
+
+# Or all-in-one
+npm run test:docker
+```
+
+#### Option 3: Skip Integration Tests
+
+```bash
+# Just run unit tests during development
+npm run test:unit
+```
+
+### Test Coverage
+
+The project includes comprehensive testing:
+
+- ✅ **24 unit tests** - Rating calculations, trust score, badge logic
+- ⚠️ **15 integration tests** - Complete API workflows (requires MongoDB)
+
+**Coverage Target**: 70%+ for branches, functions, lines, and statements
+
+📖 **Detailed testing guide**: See [docs/TESTING.md](docs/TESTING.md)
 
 ## Testing the API
 
@@ -295,17 +736,31 @@ throw new NotFoundException('User not found');
 # Health check
 curl http://localhost:3000/
 
-# Hello World
-curl http://localhost:3000/api/hello
+# Register user
+curl -X POST http://localhost:3000/api/users/register \
+  -H "Content-Type: application/json" \
+  -d '{"firstName":"John","lastName":"Doe","email":"john@example.com","password":"password123","role":"job_seeker"}'
 
-# Personalized greeting
-curl http://localhost:3000/api/hello/John
+# Login
+curl -X POST http://localhost:3000/api/users/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"john@example.com","password":"password123"}'
 
-# Test 404 error
-curl http://localhost:3000/api/nonexistent
+# Get current user (replace TOKEN with your JWT)
+curl http://localhost:3000/api/users/me \
+  -H "Authorization: Bearer TOKEN"
 
-# Test validation error
-curl http://localhost:3000/api/hello/
+# Create review
+curl -X POST http://localhost:3000/api/reviews \
+  -H "Authorization: Bearer TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"revieweeId":"USER_ID","jobId":"JOB_ID","reviewerType":"job_seeker","rating":5,"comment":"Great!"}'
+
+# Get user reviews
+curl http://localhost:3000/api/reviews/user/USER_ID
+
+# Get rating statistics
+curl http://localhost:3000/api/reviews/stats/USER_ID
 ```
 
 ### Using HTTPie

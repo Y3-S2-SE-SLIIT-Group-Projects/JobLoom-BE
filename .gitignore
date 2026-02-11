@@ -146,3 +146,5 @@ vite.config.ts.timestamp-*
 
 # Project specific
 .DS_Store
+
+Requirement.md

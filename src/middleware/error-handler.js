@@ -1,6 +1,7 @@
 import logger from '../config/logger.config.js';
 import HttpException from '../models/http-exception.js';
 import envConfig from '../config/env.config.js';
+import { HTTP_STATUS } from '../config/server.config.js';
 
 /**
  * Global Exception Filter / Error Handler Middleware
@@ -8,7 +9,7 @@ import envConfig from '../config/env.config.js';
  */
 export const errorHandler = (err, req, res, _next) => {
   // Default error values
-  let statusCode = 500;
+  let statusCode = HTTP_STATUS.INTERNAL_SERVER_ERROR;
   let message = 'Internal Server Error';
   let errorDetails = null;
 
@@ -29,7 +30,7 @@ export const errorHandler = (err, req, res, _next) => {
   }
   // Handle Mongoose validation errors
   else if (err.name === 'ValidationError') {
-    statusCode = 400;
+    statusCode = HTTP_STATUS.BAD_REQUEST;
     message = 'Validation Error';
     errorDetails = {
       errors: Object.values(err.errors).map((error) => ({
@@ -47,7 +48,7 @@ export const errorHandler = (err, req, res, _next) => {
   }
   // Handle Mongoose duplicate key error
   else if (err.code === 11000) {
-    statusCode = 409;
+    statusCode = HTTP_STATUS.CONFLICT;
     message = 'Duplicate Entry';
     const field = Object.keys(err.keyPattern)[0];
     errorDetails = {
@@ -64,7 +65,7 @@ export const errorHandler = (err, req, res, _next) => {
   }
   // Handle Mongoose CastError (invalid ObjectId, etc.)
   else if (err.name === 'CastError') {
-    statusCode = 400;
+    statusCode = HTTP_STATUS.BAD_REQUEST;
     message = 'Invalid Data Format';
     errorDetails = {
       field: err.path,
@@ -81,7 +82,7 @@ export const errorHandler = (err, req, res, _next) => {
   }
   // Handle JWT errors
   else if (err.name === 'UnauthorizedError' || err.name === 'JsonWebTokenError') {
-    statusCode = 401;
+    statusCode = HTTP_STATUS.UNAUTHORIZED;
     message = 'Unauthorized - Invalid or missing token';
 
     logger.error('JWT Error:', {
@@ -133,7 +134,7 @@ export const errorHandler = (err, req, res, _next) => {
  */
 export const notFoundHandler = (req, res, next) => {
   const error = new HttpException(
-    404,
+    HTTP_STATUS.NOT_FOUND,
     `Route not found: ${req.method} ${req.originalUrl || req.url}`
   );
   next(error);
