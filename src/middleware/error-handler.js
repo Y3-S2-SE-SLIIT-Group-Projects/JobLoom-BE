@@ -92,6 +92,24 @@ export const errorHandler = (err, req, res, _next) => {
       message: err.message,
     });
   }
+  // Handle MongoDB Server errors (like GeoJSON errors)
+  else if (err.name === 'MongoServerError' || err.code === 16755) {
+    statusCode = HTTP_STATUS.BAD_REQUEST;
+    message = 'Invalid data format';
+    errorDetails = {
+      message: err.message || 'Invalid data format',
+      code: err.code,
+    };
+
+    logger.error('MongoDB Server Error:', {
+      requestId: req.requestId,
+      url: req.originalUrl || req.url,
+      method: req.method,
+      message: err.message,
+      code: err.code,
+      stack: err.stack,
+    });
+  }
   // Handle all other errors
   else {
     logger.error('Unhandled Error:', {
