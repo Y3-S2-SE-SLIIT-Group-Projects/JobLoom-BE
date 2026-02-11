@@ -11,6 +11,7 @@ const router = Router();
 
 // Register route modules
 router.use('/hello', helloController);
+router.use('/users', userRoutes);
 
 // Module routes
 router.use('/users', userRoutes);
