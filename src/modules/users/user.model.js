@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
 
 const ratingStatsSchema = new mongoose.Schema(
   {
@@ -29,60 +29,55 @@ const userSchema = new mongoose.Schema(
   {
     firstName: {
       type: String,
-      required: [true, 'First name is required'],
+      required: true,
       trim: true,
-      maxlength: [50, 'First name cannot exceed 50 characters'],
     },
     lastName: {
       type: String,
-      required: [true, 'Last name is required'],
+      required: true,
       trim: true,
-      maxlength: [50, 'Last name cannot exceed 50 characters'],
     },
     email: {
       type: String,
-      required: [true, 'Email is required'],
+      required: true,
       unique: true,
-      lowercase: true,
       trim: true,
-      match: [/^\S+@\S+\.\S+$/, 'Please provide a valid email address'],
+      lowercase: true,
     },
     password: {
       type: String,
-      required: [true, 'Password is required'],
-      minlength: [6, 'Password must be at least 6 characters'],
-      select: false, // Don't return password in queries by default
+      required: true,
     },
     role: {
       type: String,
-      enum: {
-        values: ['job_seeker', 'employer', 'admin'],
-        message: '{VALUE} is not a valid role',
-      },
-      required: [true, 'Role is required'],
+      enum: ['job_seeker', 'employer', 'admin'],
+      required: true,
       default: 'job_seeker',
     },
     phone: {
       type: String,
-      trim: true,
+      required: true,
     },
     location: {
-      village: String,
-      district: String,
-      province: String,
+      village: { type: String, required: true },
+      district: { type: String, required: true },
+      province: { type: String, required: true },
     },
     profileImage: {
       type: String,
+      default: '',
     },
-    skills: [
-      {
-        type: String,
-        trim: true,
-      },
-    ],
+    cv: {
+      type: String, // file path for job seekers
+      default: '',
+    },
+    skills: {
+      type: [String],
+      default: [],
+    },
     experience: {
       type: String,
-      trim: true,
+      default: '',
     },
     isVerified: {
       type: Boolean,
@@ -103,39 +98,12 @@ const userSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-    toJSON: { virtuals: true },
-    toObject: { virtuals: true },
   }
 );
 
-// Indexes
-userSchema.index({ role: 1 });
-userSchema.index({ isActive: 1 });
-
-// Virtual field for full name
 userSchema.virtual('fullName').get(function () {
   return `${this.firstName} ${this.lastName}`;
 });
-
-// Pre-save hook to hash password
-userSchema.pre('save', async function () {
-  // Only hash password if it has been modified
-  if (!this.isModified('password')) {
-    return;
-  }
-
-  const rounds = parseInt(process.env.BCRYPT_ROUNDS) || 10;
-  this.password = await bcrypt.hash(this.password, rounds);
-});
-
-// Method to compare passwords
-userSchema.methods.comparePassword = async function (candidatePassword) {
-  try {
-    return await bcrypt.compare(candidatePassword, this.password);
-  } catch (error) {
-    return false;
-  }
-};
 
 // Method to update rating statistics
 userSchema.methods.updateRatingStats = function (stats) {
@@ -146,16 +114,17 @@ userSchema.methods.updateRatingStats = function (stats) {
   };
 };
 
-// Query helper to find active users
-userSchema.query.active = function () {
-  return this.where({ isActive: true });
-};
+// Pre-save hook for password hashing
+userSchema.pre('save', async function () {
+  if (!this.isModified('password')) return;
 
-// Remove password from JSON response
-userSchema.methods.toJSON = function () {
-  const user = this.toObject();
-  delete user.password;
-  return user;
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
+});
+
+// Method to compare password
+userSchema.methods.comparePassword = async function (candidatePassword) {
+  return await bcrypt.compare(candidatePassword, this.password);
 };
 
 const User = mongoose.model('User', userSchema);
