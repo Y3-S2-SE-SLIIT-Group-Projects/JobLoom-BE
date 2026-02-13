@@ -1,157 +1,143 @@
 import User from './user.model.js';
-import { generateToken } from '../../utils/jwt.utils.js';
-import HttpException from '../../models/http-exception.js';
+import jwt from 'jsonwebtoken';
+import envConfig from '../../config/env.config.js';
 
-/**
- * User Service
- * Business logic for user operations
- */
+const generateToken = (id) => {
+  return jwt.sign({ id }, envConfig.jwtSecret, {
+    expiresIn: envConfig.jwtExpiresIn,
+  });
+};
 
 /**
  * Register a new user
- * @param {Object} userData - User registration data
- * @returns {Object} Created user and token
+ * @param {Object} userData
+ * @returns {Object} { user, token }
  */
 export const registerUser = async (userData) => {
-  // Check if user already exists
-  const existingUser = await User.findOne({ email: userData.email });
-  if (existingUser) {
-    throw new HttpException(409, 'User with this email already exists');
+  const { email } = userData;
+
+  const userExists = await User.findOne({ email });
+
+  if (userExists) {
+    throw new Error('User already exists');
   }
 
-  // Create user
   const user = await User.create(userData);
 
-  // Generate token
-  const token = generateToken({
-    userId: user._id,
-    email: user.email,
-    role: user.role,
-  });
-
-  return {
-    user,
-    token,
-  };
+  if (user) {
+    return {
+      _id: user._id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      role: user.role,
+      token: generateToken(user._id),
+    };
+  } else {
+    throw new Error('Invalid user data');
+  }
 };
 
 /**
- * Login user
- * @param {string} email - User email
- * @param {string} password - User password
- * @returns {Object} User and token
+ * Authenticate user & get token
+ * @param {string} email
+ * @param {string} password
+ * @returns {Object} { user, token }
  */
 export const loginUser = async (email, password) => {
-  // Find user with password field
-  const user = await User.findOne({ email }).select('+password');
+  const user = await User.findOne({ email });
 
-  if (!user) {
-    throw new HttpException(401, 'Invalid email or password');
+  if (user && (await user.comparePassword(password))) {
+    return {
+      _id: user._id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      role: user.role,
+      token: generateToken(user._id),
+    };
+  } else {
+    throw new Error('Invalid email or password');
   }
-
-  // Check if user is active
-  if (!user.isActive) {
-    throw new HttpException(403, 'Your account has been deactivated');
-  }
-
-  // Compare password
-  const isPasswordValid = await user.comparePassword(password);
-
-  if (!isPasswordValid) {
-    throw new HttpException(401, 'Invalid email or password');
-  }
-
-  // Generate token
-  const token = generateToken({
-    userId: user._id,
-    email: user.email,
-    role: user.role,
-  });
-
-  // Remove password from response
-  user.password = undefined;
-
-  return {
-    user,
-    token,
-  };
 };
 
 /**
- * Get user by ID
- * @param {string} userId - User ID
- * @returns {Object} User
+ * Get user profile
+ * @param {string} id
+ * @returns {Object} user
  */
-export const getUserById = async (userId) => {
-  const user = await User.findById(userId).active();
-
-  if (!user) {
-    throw new HttpException(404, 'User not found');
+export const getUserProfile = async (id) => {
+  const user = await User.findById(id).select('-password');
+  if (user) {
+    return user;
+  } else {
+    throw new Error('User not found');
   }
-
-  return user;
-};
-
-/**
- * Get current authenticated user
- * @param {string} userId - User ID from token
- * @returns {Object} User
- */
-export const getCurrentUser = async (userId) => {
-  const user = await User.findById(userId);
-
-  if (!user) {
-    throw new HttpException(404, 'User not found');
-  }
-
-  if (!user.isActive) {
-    throw new HttpException(403, 'Your account has been deactivated');
-  }
-
-  return user;
 };
 
 /**
  * Update user profile
- * @param {string} userId - User ID
- * @param {Object} updateData - Data to update
- * @returns {Object} Updated user
+ * @param {Object} user - The user object from request
+ * @param {Object} updates - The updates
+ * @returns {Object} updatedUser
  */
-export const updateUserProfile = async (userId, updateData) => {
-  // Don't allow updating sensitive fields
-  const allowedUpdates = [
-    'firstName',
-    'lastName',
-    'phone',
-    'location',
-    'skills',
-    'experience',
-    'profileImage',
-  ];
+export const updateUserProfile = async (user, updates) => {
+  user.firstName = updates.firstName || user.firstName;
+  user.lastName = updates.lastName || user.lastName;
+  user.phone = updates.phone || user.phone;
+  user.location = updates.location || user.location;
+  user.skills = updates.skills || user.skills;
+  user.experience = updates.experience || user.experience;
 
-  const updates = {};
-  for (const key of allowedUpdates) {
-    if (updateData[key] !== undefined) {
-      updates[key] = updateData[key];
+  if (updates.password) {
+    user.password = updates.password;
+  }
+
+  if (updates.profileImage) {
+    user.profileImage = updates.profileImage;
+  }
+
+  if (updates.cv) {
+    user.cv = updates.cv;
+  }
+
+  const updatedUser = await user.save();
+
+  return {
+    _id: updatedUser._id,
+    firstName: updatedUser.firstName,
+    lastName: updatedUser.lastName,
+    email: updatedUser.email,
+    role: updatedUser.role,
+    token: generateToken(updatedUser._id),
+  };
+};
+
+/**
+ * Delete user (soft delete)
+ * @param {string} id
+ * @param {string} password
+ */
+export const deleteUser = async (id, password) => {
+  const user = await User.findById(id);
+
+  if (user) {
+    if (await user.comparePassword(password)) {
+      user.isActive = false;
+      await user.save();
+      return { message: 'User removed' };
+    } else {
+      throw new Error('Invalid password');
     }
+  } else {
+    throw new Error('User not found');
   }
-
-  const user = await User.findByIdAndUpdate(userId, updates, {
-    new: true,
-    runValidators: true,
-  });
-
-  if (!user) {
-    throw new HttpException(404, 'User not found');
-  }
-
-  return user;
 };
 
 export default {
   registerUser,
   loginUser,
-  getUserById,
-  getCurrentUser,
+  getUserProfile,
   updateUserProfile,
+  deleteUser,
 };
