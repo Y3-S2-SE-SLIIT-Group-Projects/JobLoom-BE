@@ -1,6 +1,8 @@
+import { body, param, query } from 'express-validator';
+
 /**
- * Job Validation Schemas
- * Input validation rules for job-related operations
+ * Validation schemas for job endpoints
+ * Using express-validator like the reviews module
  */
 
 // Category enum (Expanded)
@@ -75,369 +77,294 @@ export const EXPERIENCE_LEVELS = ['none', 'beginner', 'intermediate', 'advanced'
 export const JOB_STATUS = ['open', 'closed', 'filled'];
 
 /**
- * Validate create job request
- * All fields are now optional - only validate format if provided
+ * Create job validation
  */
-export const validateCreateJob = (data) => {
-  const errors = [];
+export const createJobValidation = [
+  body('title')
+    .optional()
+    .trim()
+    .isLength({ min: 3, max: 100 })
+    .withMessage('Title must be between 3 and 100 characters if provided'),
 
-  // Title validation (optional)
-  if (data.title !== undefined && data.title !== null && data.title !== '') {
-    if (typeof data.title !== 'string') {
-      errors.push('Title must be a string');
-    } else if (data.title.trim().length < 3) {
-      errors.push('Title must be at least 3 characters long if provided');
-    } else if (data.title.length > 100) {
-      errors.push('Title cannot exceed 100 characters');
-    }
-  }
+  body('description')
+    .optional()
+    .trim()
+    .isLength({ min: 20, max: 2000 })
+    .withMessage('Description must be between 20 and 2000 characters if provided'),
 
-  // Description validation (optional)
-  if (data.description !== undefined && data.description !== null && data.description !== '') {
-    if (typeof data.description !== 'string') {
-      errors.push('Description must be a string');
-    } else {
-      const textDescription = data.description.replace(/<[^>]*>/g, '').trim();
-      if (textDescription.length > 0 && textDescription.length < 20) {
-        errors.push('Description must be at least 20 characters long if provided');
-      } else if (data.description.length > 2000) {
-        errors.push('Description cannot exceed 2000 characters');
-      }
-    }
-  }
+  body('category')
+    .optional()
+    .isIn(JOB_CATEGORIES)
+    .withMessage(`Category must be one of: ${JOB_CATEGORIES.join(', ')}`),
 
-  // Category validation (optional)
-  if (data.category !== undefined && data.category !== null && data.category !== '') {
-    if (!JOB_CATEGORIES.includes(data.category)) {
-      errors.push(`Category must be one of: ${JOB_CATEGORIES.join(', ')}`);
-    }
-  }
+  body('jobRole')
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Job role must be between 2 and 100 characters if provided'),
 
-  // Job Role validation (optional)
-  if (data.jobRole !== undefined && data.jobRole !== null && data.jobRole !== '') {
-    if (typeof data.jobRole !== 'string') {
-      errors.push('Job role must be a string');
-    } else if (data.jobRole.trim().length < 2) {
-      errors.push('Job role must be at least 2 characters long if provided');
-    } else if (data.jobRole.length > 100) {
-      errors.push('Job role cannot exceed 100 characters');
-    }
-  }
+  body('employmentType')
+    .optional()
+    .isIn(EMPLOYMENT_TYPES)
+    .withMessage(`Employment type must be one of: ${EMPLOYMENT_TYPES.join(', ')}`),
 
-  // Employment Type validation (optional)
-  if (
-    data.employmentType !== undefined &&
-    data.employmentType !== null &&
-    data.employmentType !== ''
-  ) {
-    if (!EMPLOYMENT_TYPES.includes(data.employmentType)) {
-      errors.push(`Employment type must be one of: ${EMPLOYMENT_TYPES.join(', ')}`);
-    }
-  }
+  body('location.village').optional().trim().isString().withMessage('Village must be a string'),
 
-  // Location validation (optional)
-  if (data.location !== undefined && data.location !== null) {
-    if (typeof data.location !== 'object') {
-      errors.push('Location must be an object');
-    } else {
-      // Village, district, province are all optional
-      if (data.location.village !== undefined && typeof data.location.village !== 'string') {
-        errors.push('Location village must be a string');
-      }
-      if (data.location.district !== undefined && typeof data.location.district !== 'string') {
-        errors.push('Location district must be a string');
-      }
-      if (data.location.province !== undefined && typeof data.location.province !== 'string') {
-        errors.push('Location province must be a string');
-      }
+  body('location.district').optional().trim().isString().withMessage('District must be a string'),
 
-      // Coordinates validation - only validate if provided and not empty
-      if (data.location.coordinates !== undefined && data.location.coordinates !== null) {
-        // If coordinates is an empty object or has empty array, remove it
-        if (
-          !data.location.coordinates.coordinates ||
-          !Array.isArray(data.location.coordinates.coordinates) ||
-          data.location.coordinates.coordinates.length === 0
-        ) {
-          // Remove invalid coordinates
-          delete data.location.coordinates;
-        } else if (data.location.coordinates.coordinates.length !== 2) {
-          errors.push('Coordinates must have exactly 2 values: [longitude, latitude]');
-        } else {
-          const [lng, lat] = data.location.coordinates.coordinates;
-          if (typeof lng !== 'number' || typeof lat !== 'number') {
-            errors.push('Coordinates must be numbers');
-          } else if (isNaN(lng) || isNaN(lat)) {
-            errors.push('Coordinates must be valid numbers');
-          } else if (lng < -180 || lng > 180) {
-            errors.push('Longitude must be between -180 and 180');
-          } else if (lat < -90 || lat > 90) {
-            errors.push('Latitude must be between -90 and 90');
-          }
-        }
-      }
-    }
-  }
+  body('location.province').optional().trim().isString().withMessage('Province must be a string'),
 
-  // Salary type validation (optional)
-  if (data.salaryType !== undefined && data.salaryType !== null && data.salaryType !== '') {
-    if (!SALARY_TYPES.includes(data.salaryType)) {
-      errors.push(`Salary type must be one of: ${SALARY_TYPES.join(', ')}`);
-    }
-  }
+  body('location.fullAddress')
+    .optional()
+    .trim()
+    .isString()
+    .withMessage('Full address must be a string'),
 
-  // Salary amount validation (optional)
-  if (data.salaryAmount !== undefined && data.salaryAmount !== null && data.salaryAmount !== '') {
-    // Convert string to number if needed (from form inputs)
-    const salaryAmount =
-      typeof data.salaryAmount === 'string' ? parseFloat(data.salaryAmount) : data.salaryAmount;
-    if (isNaN(salaryAmount) || salaryAmount < 0) {
-      errors.push('Salary amount must be a positive number if provided');
-    } else {
-      // Replace string with number in data
-      data.salaryAmount = salaryAmount;
-    }
-  }
+  body('location.coordinates.coordinates')
+    .optional()
+    .isArray({ min: 2, max: 2 })
+    .withMessage('Coordinates must be an array of 2 numbers [longitude, latitude]'),
 
-  // Experience validation (optional)
-  if (data.experienceRequired && !EXPERIENCE_LEVELS.includes(data.experienceRequired)) {
-    errors.push(`Experience level must be one of: ${EXPERIENCE_LEVELS.join(', ')}`);
-  }
+  body('location.coordinates.coordinates.*')
+    .optional()
+    .isFloat({ min: -180, max: 180 })
+    .withMessage('Coordinate values must be valid numbers'),
 
-  // Positions validation (optional)
-  if (data.positions !== undefined && data.positions !== null && data.positions !== '') {
-    // Convert string to number if needed (from form inputs)
-    const positions =
-      typeof data.positions === 'string' ? parseInt(data.positions, 10) : data.positions;
-    if (isNaN(positions) || positions < 1 || positions > 100) {
-      errors.push('Positions must be a number between 1 and 100 if provided');
-    } else {
-      // Replace string with number in data
-      data.positions = positions;
-    }
-  }
+  body('salaryType')
+    .optional()
+    .isIn(SALARY_TYPES)
+    .withMessage(`Salary type must be one of: ${SALARY_TYPES.join(', ')}`),
 
-  // Start date validation (optional)
-  if (data.startDate !== undefined && data.startDate !== null && data.startDate !== '') {
-    const startDate = new Date(data.startDate);
-    if (isNaN(startDate.getTime())) {
-      errors.push('Start date must be a valid date if provided');
-    }
-  }
+  body('salaryAmount')
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage('Salary amount must be a positive number if provided'),
 
-  // End date validation (optional)
-  if (data.endDate) {
-    const endDate = new Date(data.endDate);
-    if (isNaN(endDate.getTime())) {
-      errors.push('End date must be a valid date');
-    } else if (data.startDate) {
-      const startDate = new Date(data.startDate);
-      if (endDate <= startDate) {
-        errors.push('End date must be after start date');
-      }
-    }
-  }
+  body('currency')
+    .optional()
+    .isIn(['LKR', 'USD'])
+    .withMessage('Currency must be either LKR or USD'),
 
-  // Skills validation (optional)
-  if (data.skillsRequired && !Array.isArray(data.skillsRequired)) {
-    errors.push('Skills required must be an array');
-  }
+  body('skillsRequired').optional().isArray().withMessage('Skills required must be an array'),
 
-  return {
-    isValid: errors.length === 0,
-    errors,
-  };
-};
+  body('skillsRequired.*').optional().trim().isString().withMessage('Each skill must be a string'),
+
+  body('experienceRequired')
+    .optional()
+    .isIn(EXPERIENCE_LEVELS)
+    .withMessage(`Experience level must be one of: ${EXPERIENCE_LEVELS.join(', ')}`),
+
+  body('positions')
+    .optional()
+    .isInt({ min: 1, max: 100 })
+    .withMessage('Positions must be a number between 1 and 100 if provided'),
+
+  body('startDate')
+    .optional()
+    .isISO8601()
+    .withMessage('Start date must be a valid ISO 8601 date if provided'),
+
+  body('endDate').optional().isISO8601().withMessage('End date must be a valid ISO 8601 date'),
+];
 
 /**
- * Validate update job request
+ * Update job validation
  */
-export const validateUpdateJob = (data) => {
-  const errors = [];
+export const updateJobValidation = [
+  param('id').isMongoId().withMessage('Invalid job ID'),
 
-  // Title validation (optional)
-  if (data.title !== undefined) {
-    if (typeof data.title !== 'string') {
-      errors.push('Title must be a string');
-    } else if (data.title.trim().length < 3) {
-      errors.push('Title must be at least 3 characters long');
-    } else if (data.title.length > 100) {
-      errors.push('Title cannot exceed 100 characters');
-    }
-  }
+  body('title')
+    .optional()
+    .trim()
+    .isLength({ min: 3, max: 100 })
+    .withMessage('Title must be between 3 and 100 characters'),
 
-  // Description validation (optional)
-  if (data.description !== undefined) {
-    if (typeof data.description !== 'string') {
-      errors.push('Description must be a string');
-    } else if (data.description.trim().length < 20) {
-      errors.push('Description must be at least 20 characters long');
-    } else if (data.description.length > 2000) {
-      errors.push('Description cannot exceed 2000 characters');
-    }
-  }
+  body('description')
+    .optional()
+    .trim()
+    .isLength({ min: 20, max: 2000 })
+    .withMessage('Description must be between 20 and 2000 characters'),
 
-  // Category validation (optional)
-  if (data.category !== undefined && !JOB_CATEGORIES.includes(data.category)) {
-    errors.push(`Category must be one of: ${JOB_CATEGORIES.join(', ')}`);
-  }
+  body('category')
+    .optional()
+    .isIn(JOB_CATEGORIES)
+    .withMessage(`Category must be one of: ${JOB_CATEGORIES.join(', ')}`),
 
-  // Salary type validation (optional)
-  if (data.salaryType !== undefined && !SALARY_TYPES.includes(data.salaryType)) {
-    errors.push(`Salary type must be one of: ${SALARY_TYPES.join(', ')}`);
-  }
+  body('jobRole')
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Job role must be between 2 and 100 characters'),
 
-  // Salary amount validation (optional)
-  if (data.salaryAmount !== undefined) {
-    if (typeof data.salaryAmount !== 'number' || data.salaryAmount < 0) {
-      errors.push('Salary amount must be a positive number');
-    }
-  }
+  body('employmentType')
+    .optional()
+    .isIn(EMPLOYMENT_TYPES)
+    .withMessage(`Employment type must be one of: ${EMPLOYMENT_TYPES.join(', ')}`),
 
-  // Experience validation (optional)
-  if (
-    data.experienceRequired !== undefined &&
-    !EXPERIENCE_LEVELS.includes(data.experienceRequired)
-  ) {
-    errors.push(`Experience level must be one of: ${EXPERIENCE_LEVELS.join(', ')}`);
-  }
+  body('location.village').optional().trim().isString().withMessage('Village must be a string'),
 
-  // Positions validation (optional)
-  if (data.positions !== undefined) {
-    if (typeof data.positions !== 'number' || data.positions < 1 || data.positions > 100) {
-      errors.push('Positions must be a number between 1 and 100');
-    }
-  }
+  body('location.district').optional().trim().isString().withMessage('District must be a string'),
 
-  // Status validation (optional)
-  if (data.status !== undefined && !JOB_STATUS.includes(data.status)) {
-    errors.push(`Status must be one of: ${JOB_STATUS.join(', ')}`);
-  }
+  body('location.province').optional().trim().isString().withMessage('Province must be a string'),
 
-  // Dates validation (optional)
-  if (data.startDate !== undefined) {
-    const startDate = new Date(data.startDate);
-    if (isNaN(startDate.getTime())) {
-      errors.push('Start date must be a valid date');
-    }
-  }
+  body('location.fullAddress')
+    .optional()
+    .trim()
+    .isString()
+    .withMessage('Full address must be a string'),
 
-  if (data.endDate !== undefined) {
-    const endDate = new Date(data.endDate);
-    if (isNaN(endDate.getTime())) {
-      errors.push('End date must be a valid date');
-    }
-  }
+  body('location.coordinates.coordinates')
+    .optional()
+    .isArray({ min: 2, max: 2 })
+    .withMessage('Coordinates must be an array of 2 numbers [longitude, latitude]'),
 
-  return {
-    isValid: errors.length === 0,
-    errors,
-  };
-};
+  body('location.coordinates.coordinates.*')
+    .optional()
+    .isFloat({ min: -180, max: 180 })
+    .withMessage('Coordinate values must be valid numbers'),
+
+  body('salaryType')
+    .optional()
+    .isIn(SALARY_TYPES)
+    .withMessage(`Salary type must be one of: ${SALARY_TYPES.join(', ')}`),
+
+  body('salaryAmount')
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage('Salary amount must be a positive number'),
+
+  body('currency')
+    .optional()
+    .isIn(['LKR', 'USD'])
+    .withMessage('Currency must be either LKR or USD'),
+
+  body('skillsRequired').optional().isArray().withMessage('Skills required must be an array'),
+
+  body('skillsRequired.*').optional().trim().isString().withMessage('Each skill must be a string'),
+
+  body('experienceRequired')
+    .optional()
+    .isIn(EXPERIENCE_LEVELS)
+    .withMessage(`Experience level must be one of: ${EXPERIENCE_LEVELS.join(', ')}`),
+
+  body('positions')
+    .optional()
+    .isInt({ min: 1, max: 100 })
+    .withMessage('Positions must be a number between 1 and 100'),
+
+  body('status')
+    .optional()
+    .isIn(JOB_STATUS)
+    .withMessage(`Status must be one of: ${JOB_STATUS.join(', ')}`),
+
+  body('startDate').optional().isISO8601().withMessage('Start date must be a valid ISO 8601 date'),
+
+  body('endDate').optional().isISO8601().withMessage('End date must be a valid ISO 8601 date'),
+];
 
 /**
- * Validate query parameters for job listing
+ * Get job by ID validation
  */
-export const validateJobQuery = (query) => {
-  const errors = [];
-
-  // Page validation
-  if (query.page !== undefined) {
-    const page = Number(query.page);
-    if (isNaN(page) || page < 1) {
-      errors.push('Page must be a positive number');
-    }
-  }
-
-  // Limit validation
-  if (query.limit !== undefined) {
-    const limit = Number(query.limit);
-    if (isNaN(limit) || limit < 1 || limit > 100) {
-      errors.push('Limit must be a number between 1 and 100');
-    }
-  }
-
-  // Category validation
-  if (query.category !== undefined && !JOB_CATEGORIES.includes(query.category)) {
-    errors.push(`Category must be one of: ${JOB_CATEGORIES.join(', ')}`);
-  }
-
-  // Status validation
-  if (query.status !== undefined && !JOB_STATUS.includes(query.status)) {
-    errors.push(`Status must be one of: ${JOB_STATUS.join(', ')}`);
-  }
-
-  // Salary validation
-  if (query.minSalary !== undefined) {
-    const minSalary = Number(query.minSalary);
-    if (isNaN(minSalary) || minSalary < 0) {
-      errors.push('Min salary must be a positive number');
-    }
-  }
-
-  if (query.maxSalary !== undefined) {
-    const maxSalary = Number(query.maxSalary);
-    if (isNaN(maxSalary) || maxSalary < 0) {
-      errors.push('Max salary must be a positive number');
-    }
-  }
-
-  // Sort validation
-  if (query.sortBy !== undefined) {
-    const validSortFields = ['createdAt', 'salaryAmount', 'title', 'applicantsCount'];
-    if (!validSortFields.includes(query.sortBy)) {
-      errors.push(`Sort by must be one of: ${validSortFields.join(', ')}`);
-    }
-  }
-
-  if (query.sortOrder !== undefined) {
-    if (!['asc', 'desc'].includes(query.sortOrder)) {
-      errors.push('Sort order must be either "asc" or "desc"');
-    }
-  }
-
-  return {
-    isValid: errors.length === 0,
-    errors,
-  };
-};
+export const getJobValidation = [param('id').isMongoId().withMessage('Invalid job ID')];
 
 /**
- * Validate nearby jobs query
+ * Delete job validation
  */
-export const validateNearbyQuery = (query) => {
-  const errors = [];
+export const deleteJobValidation = [param('id').isMongoId().withMessage('Invalid job ID')];
 
-  // Latitude validation
-  if (!query.lat) {
-    errors.push('Latitude is required');
-  } else {
-    const lat = Number(query.lat);
-    if (isNaN(lat) || lat < -90 || lat > 90) {
-      errors.push('Latitude must be a number between -90 and 90');
-    }
-  }
+/**
+ * Job query validation (for GET /api/jobs)
+ */
+export const getJobsValidation = [
+  query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer'),
 
-  // Longitude validation
-  if (!query.lng) {
-    errors.push('Longitude is required');
-  } else {
-    const lng = Number(query.lng);
-    if (isNaN(lng) || lng < -180 || lng > 180) {
-      errors.push('Longitude must be a number between -180 and 180');
-    }
-  }
+  query('limit')
+    .optional()
+    .isInt({ min: 1, max: 100 })
+    .withMessage('Limit must be between 1 and 100'),
 
-  // Radius validation (optional)
-  if (query.radius !== undefined) {
-    const radius = Number(query.radius);
-    if (isNaN(radius) || radius < 1 || radius > 1000) {
-      errors.push('Radius must be a number between 1 and 1000 km');
-    }
-  }
+  query('category')
+    .optional()
+    .isIn(JOB_CATEGORIES)
+    .withMessage(`Category must be one of: ${JOB_CATEGORIES.join(', ')}`),
 
-  return {
-    isValid: errors.length === 0,
-    errors,
-  };
+  query('status')
+    .optional()
+    .isIn(JOB_STATUS)
+    .withMessage(`Status must be one of: ${JOB_STATUS.join(', ')}`),
+
+  query('minSalary')
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage('Min salary must be a positive number'),
+
+  query('maxSalary')
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage('Max salary must be a positive number'),
+
+  query('salaryType')
+    .optional()
+    .isIn(SALARY_TYPES)
+    .withMessage(`Salary type must be one of: ${SALARY_TYPES.join(', ')}`),
+
+  query('district').optional().trim().isString().withMessage('District must be a string'),
+
+  query('province').optional().trim().isString().withMessage('Province must be a string'),
+
+  query('search').optional().trim().isString().withMessage('Search must be a string'),
+
+  query('sortBy')
+    .optional()
+    .isIn(['createdAt', 'salaryAmount', 'title', 'applicantsCount'])
+    .withMessage('Sort by must be one of: createdAt, salaryAmount, title, applicantsCount'),
+
+  query('sortOrder')
+    .optional()
+    .isIn(['asc', 'desc'])
+    .withMessage('Sort order must be either "asc" or "desc"'),
+];
+
+/**
+ * Nearby jobs validation
+ */
+export const getNearbyJobsValidation = [
+  query('lat')
+    .notEmpty()
+    .withMessage('Latitude is required')
+    .isFloat({ min: -90, max: 90 })
+    .withMessage('Latitude must be between -90 and 90'),
+
+  query('lng')
+    .notEmpty()
+    .withMessage('Longitude is required')
+    .isFloat({ min: -180, max: 180 })
+    .withMessage('Longitude must be between -180 and 180'),
+
+  query('radius')
+    .optional()
+    .isFloat({ min: 1, max: 1000 })
+    .withMessage('Radius must be between 1 and 1000 km'),
+];
+
+/**
+ * Get employer jobs validation
+ */
+export const getEmployerJobsValidation = [
+  query('includeInactive').optional().isBoolean().withMessage('Include inactive must be a boolean'),
+
+  query('status')
+    .optional()
+    .isIn(JOB_STATUS)
+    .withMessage(`Status must be one of: ${JOB_STATUS.join(', ')}`),
+];
+
+export default {
+  createJobValidation,
+  updateJobValidation,
+  getJobValidation,
+  deleteJobValidation,
+  getJobsValidation,
+  getNearbyJobsValidation,
+  getEmployerJobsValidation,
 };

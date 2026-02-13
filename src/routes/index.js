@@ -3,7 +3,7 @@ import helloController from './hello/hello.controller.js';
 
 // Import module routes
 import userRoutes from '../modules/users/user.routes.js';
-import jobRoutes from '../modules/jobs/job.controller.js'; // Using controller as router
+import jobRoutes from '../modules/jobs/job.routes.js';
 import applicationRoutes from '../modules/applications/application.routes.js';
 import reviewRoutes from '../modules/reviews/review.routes.js';
 

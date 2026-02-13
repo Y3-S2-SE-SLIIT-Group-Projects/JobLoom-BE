@@ -1,292 +1,168 @@
-import { Router } from 'express';
-import jobService from './job.service.js';
-import { sendSuccess, sendCreated, sendNoContent } from '../../utils/response.utils.js';
-import { BadRequestException } from '../../models/http-exception.js';
-import {
-  validateCreateJob,
-  validateUpdateJob,
-  validateJobQuery,
-  validateNearbyQuery,
-} from './job.validation.js';
-
-const router = Router();
-
-// ============================================
-// TEMPORARY: Static employer ID until user management is complete
-// Replace this with actual authentication middleware
-// ============================================
-const TEMP_EMPLOYER_ID = '507f1f77bcf86cd799439011'; // Example MongoDB ObjectId
+import * as jobService from './job.service.js';
+import { sendSuccess, sendCreated } from '../../utils/response.utils.js';
 
 /**
- * Middleware to extract employer ID
- * TODO: Replace with actual authentication middleware
+ * Job Controller
+ * HTTP request handlers for job endpoints
  */
-const getEmployerId = (req, res, next) => {
-  // For now, use static employer ID
-  // In future, this will come from JWT token: req.user.id
-  req.employerId = TEMP_EMPLOYER_ID;
-  next();
+
+/**
+ * @route   POST /api/jobs
+ * @desc    Create a new job posting
+ * @access  Private (Employer only)
+ */
+export const createJob = async (req, res) => {
+  // TODO: Replace with actual authentication middleware
+  // For now, use static employer ID until user management is complete
+  const TEMP_EMPLOYER_ID = '507f1f77bcf86cd799439011';
+  const employerId = req.user?.userId || TEMP_EMPLOYER_ID;
+
+  const job = await jobService.createJob(req.body, employerId);
+
+  sendCreated(res, 'Job created successfully', job);
 };
 
-// ============================================
-// CREATE OPERATIONS
-// ============================================
+/**
+ * @route   GET /api/jobs
+ * @desc    Get all jobs with filtering, searching, sorting, and pagination
+ * @access  Public
+ */
+export const getAllJobs = async (req, res) => {
+  const result = await jobService.getAllJobs(req.query);
+
+  sendSuccess(res, 'Jobs retrieved successfully', result);
+};
 
 /**
- * Create a new job posting
- * @route POST /api/jobs
- * @access Private (Employer only)
- * @returns {object} Created job
+ * @route   GET /api/jobs/nearby
+ * @desc    Get nearby jobs using geospatial query
+ * @access  Public
  */
-router.post('/', getEmployerId, async (req, res, next) => {
-  try {
-    // Validate request body
-    const validation = validateCreateJob(req.body);
-    if (!validation.isValid) {
-      throw new BadRequestException(validation.errors.join(', '));
-    }
+export const getNearbyJobs = async (req, res) => {
+  const { lat, lng, radius = 50 } = req.query;
 
-    const job = await jobService.createJob(req.body, req.employerId);
+  const jobs = await jobService.getNearbyJobs(Number(lng), Number(lat), Number(radius));
 
-    sendCreated(res, 'Job created successfully', job);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// ============================================
-// READ OPERATIONS
-// ============================================
+  sendSuccess(res, `Found ${jobs.length} jobs within ${radius}km`, { jobs });
+};
 
 /**
- * Get all jobs with filtering, searching, sorting, and pagination
- * @route GET /api/jobs
- * @access Public
- * @query {number} page - Page number (default: 1)
- * @query {number} limit - Items per page (default: 20, max: 100)
- * @query {string} category - Filter by category
- * @query {string} status - Filter by status (open, closed, filled)
- * @query {string} search - Search in title and description
- * @query {number} minSalary - Minimum salary
- * @query {number} maxSalary - Maximum salary
- * @query {string} salaryType - Salary type filter
- * @query {string} district - Filter by district
- * @query {string} province - Filter by province
- * @query {string} sortBy - Sort by field (default: createdAt)
- * @query {string} sortOrder - Sort order: asc or desc (default: desc)
- * @returns {object} Jobs list with pagination metadata
+ * @route   GET /api/jobs/employer/my-jobs
+ * @desc    Get jobs created by employer
+ * @access  Private (Employer only)
  */
-router.get('/', async (req, res, next) => {
-  try {
-    // Validate query parameters
-    const validation = validateJobQuery(req.query);
-    if (!validation.isValid) {
-      throw new BadRequestException(validation.errors.join(', '));
-    }
+export const getEmployerJobs = async (req, res) => {
+  // TODO: Replace with actual authentication middleware
+  const TEMP_EMPLOYER_ID = '507f1f77bcf86cd799439011';
+  const employerId = req.user?.userId || TEMP_EMPLOYER_ID;
 
-    const result = await jobService.getAllJobs(req.query);
+  const { includeInactive, status } = req.query;
 
-    sendSuccess(res, 'Jobs retrieved successfully', result);
-  } catch (error) {
-    next(error);
-  }
-});
+  const jobs = await jobService.getJobsByEmployer(employerId, {
+    includeInactive: includeInactive === 'true',
+    status,
+  });
+
+  sendSuccess(res, 'Jobs retrieved successfully', { jobs });
+};
 
 /**
- * Get nearby jobs using geospatial query (Mapbox integration)
- * @route GET /api/jobs/nearby
- * @access Public
- * @query {number} lat - Latitude
- * @query {number} lng - Longitude
- * @query {number} radius - Search radius in km (default: 50, max: 1000)
- * @returns {object} Nearby jobs
+ * @route   GET /api/jobs/employer/stats
+ * @desc    Get employer statistics for dashboard
+ * @access  Private (Employer only)
  */
-router.get('/nearby', async (req, res, next) => {
-  try {
-    // Validate query parameters
-    const validation = validateNearbyQuery(req.query);
-    if (!validation.isValid) {
-      throw new BadRequestException(validation.errors.join(', '));
-    }
+export const getEmployerStats = async (req, res) => {
+  // TODO: Replace with actual authentication middleware
+  const TEMP_EMPLOYER_ID = '507f1f77bcf86cd799439011';
+  const employerId = req.user?.userId || TEMP_EMPLOYER_ID;
 
-    const { lat, lng, radius = 50 } = req.query;
+  const stats = await jobService.getEmployerStats(employerId);
 
-    const jobs = await jobService.getNearbyJobs(Number(lng), Number(lat), Number(radius));
-
-    sendSuccess(res, `Found ${jobs.length} jobs within ${radius}km`, { jobs });
-  } catch (error) {
-    next(error);
-  }
-});
+  sendSuccess(res, 'Statistics retrieved successfully', stats);
+};
 
 /**
- * Get jobs created by employer (My Jobs)
- * @route GET /api/jobs/employer/my-jobs
- * @access Private (Employer only)
- * @query {boolean} includeInactive - Include inactive jobs (default: false)
- * @query {string} status - Filter by status
- * @returns {object} Employer's jobs
+ * @route   GET /api/jobs/:id
+ * @desc    Get single job by ID
+ * @access  Public
  */
-router.get('/employer/my-jobs', getEmployerId, async (req, res, next) => {
-  try {
-    const { includeInactive, status } = req.query;
+export const getJobById = async (req, res) => {
+  const job = await jobService.getJobById(req.params.id);
 
-    const jobs = await jobService.getJobsByEmployer(req.employerId, {
-      includeInactive: includeInactive === 'true',
-      status,
-    });
-
-    sendSuccess(res, 'Jobs retrieved successfully', { jobs });
-  } catch (error) {
-    next(error);
-  }
-});
+  sendSuccess(res, 'Job retrieved successfully', job);
+};
 
 /**
- * Get employer statistics for dashboard
- * @route GET /api/jobs/employer/stats
- * @access Private (Employer only)
- * @returns {object} Statistics
+ * @route   PUT /api/jobs/:id
+ * @desc    Update job details
+ * @access  Private (Employer only - own jobs)
  */
-router.get('/employer/stats', getEmployerId, async (req, res, next) => {
-  try {
-    const stats = await jobService.getEmployerStats(req.employerId);
+export const updateJob = async (req, res) => {
+  // TODO: Replace with actual authentication middleware
+  const TEMP_EMPLOYER_ID = '507f1f77bcf86cd799439011';
+  const employerId = req.user?.userId || TEMP_EMPLOYER_ID;
 
-    sendSuccess(res, 'Statistics retrieved successfully', stats);
-  } catch (error) {
-    next(error);
-  }
-});
+  const job = await jobService.updateJob(req.params.id, employerId, req.body);
+
+  sendSuccess(res, 'Job updated successfully', job);
+};
 
 /**
- * Get single job by ID
- * @route GET /api/jobs/:id
- * @access Public
- * @param {string} id - Job ID
- * @returns {object} Job details
+ * @route   PATCH /api/jobs/:id/close
+ * @desc    Close a job posting
+ * @access  Private (Employer only - own jobs)
  */
-router.get('/:id', async (req, res, next) => {
-  try {
-    const { id } = req.params;
+export const closeJob = async (req, res) => {
+  // TODO: Replace with actual authentication middleware
+  const TEMP_EMPLOYER_ID = '507f1f77bcf86cd799439011';
+  const employerId = req.user?.userId || TEMP_EMPLOYER_ID;
 
-    if (!id) {
-      throw new BadRequestException('Job ID is required');
-    }
+  const job = await jobService.closeJob(req.params.id, employerId);
 
-    const job = await jobService.getJobById(id);
-
-    sendSuccess(res, 'Job retrieved successfully', job);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// ============================================
-// UPDATE OPERATIONS
-// ============================================
+  sendSuccess(res, 'Job closed successfully', job);
+};
 
 /**
- * Update job details
- * @route PUT /api/jobs/:id
- * @access Private (Employer only - own jobs)
- * @param {string} id - Job ID
- * @returns {object} Updated job
+ * @route   PATCH /api/jobs/:id/filled
+ * @desc    Mark job as filled
+ * @access  Private (Employer only - own jobs)
  */
-router.put('/:id', getEmployerId, async (req, res, next) => {
-  try {
-    const { id } = req.params;
+export const markJobAsFilled = async (req, res) => {
+  // TODO: Replace with actual authentication middleware
+  const TEMP_EMPLOYER_ID = '507f1f77bcf86cd799439011';
+  const employerId = req.user?.userId || TEMP_EMPLOYER_ID;
 
-    if (!id) {
-      throw new BadRequestException('Job ID is required');
-    }
+  const job = await jobService.markJobAsFilled(req.params.id, employerId);
 
-    // Validate update data
-    const validation = validateUpdateJob(req.body);
-    if (!validation.isValid) {
-      throw new BadRequestException(validation.errors.join(', '));
-    }
-
-    const job = await jobService.updateJob(id, req.employerId, req.body);
-
-    sendSuccess(res, 'Job updated successfully', job);
-  } catch (error) {
-    next(error);
-  }
-});
+  sendSuccess(res, 'Job marked as filled', job);
+};
 
 /**
- * Close a job posting
- * @route PATCH /api/jobs/:id/close
- * @access Private (Employer only - own jobs)
- * @param {string} id - Job ID
- * @returns {object} Updated job
+ * @route   DELETE /api/jobs/:id
+ * @desc    Delete a job (soft delete)
+ * @access  Private (Employer only - own jobs)
  */
-router.patch('/:id/close', getEmployerId, async (req, res, next) => {
-  try {
-    const { id } = req.params;
+export const deleteJob = async (req, res) => {
+  // TODO: Replace with actual authentication middleware
+  const TEMP_EMPLOYER_ID = '507f1f77bcf86cd799439011';
+  const employerId = req.user?.userId || TEMP_EMPLOYER_ID;
 
-    if (!id) {
-      throw new BadRequestException('Job ID is required');
-    }
+  await jobService.deleteJob(req.params.id, employerId);
 
-    const job = await jobService.closeJob(id, req.employerId);
+  sendSuccess(res, 'Job deleted successfully', {
+    message: 'Job has been deactivated',
+  });
+};
 
-    sendSuccess(res, 'Job closed successfully', job);
-  } catch (error) {
-    next(error);
-  }
-});
-
-/**
- * Mark job as filled
- * @route PATCH /api/jobs/:id/filled
- * @access Private (Employer only - own jobs)
- * @param {string} id - Job ID
- * @returns {object} Updated job
- */
-router.patch('/:id/filled', getEmployerId, async (req, res, next) => {
-  try {
-    const { id } = req.params;
-
-    if (!id) {
-      throw new BadRequestException('Job ID is required');
-    }
-
-    const job = await jobService.markJobAsFilled(id, req.employerId);
-
-    sendSuccess(res, 'Job marked as filled', job);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// ============================================
-// DELETE OPERATIONS
-// ============================================
-
-/**
- * Delete a job (soft delete)
- * @route DELETE /api/jobs/:id
- * @access Private (Employer only - own jobs)
- * @param {string} id - Job ID
- * @returns {object} Success message
- */
-router.delete('/:id', getEmployerId, async (req, res, next) => {
-  try {
-    const { id } = req.params;
-
-    if (!id) {
-      throw new BadRequestException('Job ID is required');
-    }
-
-    await jobService.deleteJob(id, req.employerId);
-
-    sendSuccess(res, 'Job deleted successfully', {
-      message: 'Job has been deactivated',
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-export default router;
+export default {
+  createJob,
+  getAllJobs,
+  getNearbyJobs,
+  getEmployerJobs,
+  getEmployerStats,
+  getJobById,
+  updateJob,
+  closeJob,
+  markJobAsFilled,
+  deleteJob,
+};
