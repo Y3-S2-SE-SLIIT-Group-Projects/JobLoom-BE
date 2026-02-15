@@ -1,7 +1,8 @@
-import Review from './review.model.js';
-import Application from '../applications/application.model.js';
-import User from '../users/user.model.js';
-import Job from '../jobs/job.model.js';
+import * as reviewRepository from './review.repository.js';
+import * as ratingStatsService from './rating-stats.service.js';
+import * as applicationService from '../applications/application.service.js';
+import * as userService from '../users/user.service.js';
+import * as jobService from '../jobs/job.service.js';
 import HttpException from '../../models/http-exception.js';
 import {
   calculateWeightedRating,
@@ -23,17 +24,7 @@ import {
  */
 export const canUserReview = async (reviewerId, revieweeId, jobId) => {
   // Check if there's an accepted application involving both users for this job
-  const application = await Application.findOne({
-    jobId,
-    $or: [
-      // Reviewer is job seeker, reviewee is employer
-      { jobSeekerId: reviewerId, employerId: revieweeId, status: 'accepted' },
-      // Reviewer is employer, reviewee is job seeker
-      { employerId: reviewerId, jobSeekerId: revieweeId, status: 'accepted' },
-    ],
-  });
-
-  return !!application;
+  return await applicationService.hasAcceptedApplication(reviewerId, revieweeId, jobId);
 };
 
 /**
@@ -56,7 +47,7 @@ export const createReview = async (reviewData) => {
   }
 
   // Check for duplicate review
-  const existingReview = await Review.findOne({
+  const existingReview = await reviewRepository.findReview({
     reviewerId,
     revieweeId,
     jobId,
@@ -67,14 +58,16 @@ export const createReview = async (reviewData) => {
   }
 
   // Verify job exists
-  const job = await Job.findById(jobId);
-  if (!job) {
+  try {
+    await jobService.getJobById(jobId);
+  } catch {
     throw new HttpException(404, 'Job not found');
   }
 
   // Verify reviewee exists
-  const reviewee = await User.findById(revieweeId);
-  if (!reviewee) {
+  try {
+    await userService.getUserProfile(revieweeId);
+  } catch {
     throw new HttpException(404, 'Reviewee not found');
   }
 
@@ -89,12 +82,12 @@ export const createReview = async (reviewData) => {
   }
 
   // Create review
-  const review = await Review.create(reviewData);
+  const review = await reviewRepository.createReview(reviewData);
 
   // Populate related data
   await review.populate([
     { path: 'reviewerId', select: 'firstName lastName email role' },
-    { path: 'revieweeId', select: 'firstName lastName email role ratingStats' },
+    { path: 'revieweeId', select: 'firstName lastName email role' },
     { path: 'jobId', select: 'title' },
   ]);
 
@@ -107,11 +100,13 @@ export const createReview = async (reviewData) => {
  * @returns {Object} Review
  */
 export const getReviewById = async (reviewId) => {
-  const review = await Review.findById(reviewId)
-    .active()
-    .populate('reviewerId', 'firstName lastName email role')
-    .populate('revieweeId', 'firstName lastName email role ratingStats')
-    .populate('jobId', 'title description');
+  const review = await reviewRepository.findReviewById(reviewId, {
+    populate: [
+      { path: 'reviewerId', select: 'firstName lastName email role' },
+      { path: 'revieweeId', select: 'firstName lastName email role' },
+      { path: 'jobId', select: 'title description' },
+    ],
+  });
 
   if (!review) {
     throw new HttpException(404, 'Review not found');
@@ -129,7 +124,7 @@ export const getReviewById = async (reviewId) => {
  */
 export const updateReview = async (reviewId, userId, updateData) => {
   // Find review
-  const review = await Review.findById(reviewId);
+  const review = await reviewRepository.findReviewById(reviewId, { includeDeleted: true });
 
   if (!review) {
     throw new HttpException(404, 'Review not found');
@@ -186,14 +181,13 @@ export const updateReview = async (reviewId, userId, updateData) => {
   }
 
   // Update review
-  const updatedReview = await Review.findByIdAndUpdate(reviewId, updates, {
-    new: true,
-    runValidators: true,
-  }).populate([
-    { path: 'reviewerId', select: 'firstName lastName email role' },
-    { path: 'revieweeId', select: 'firstName lastName email role ratingStats' },
-    { path: 'jobId', select: 'title' },
-  ]);
+  const updatedReview = await reviewRepository.updateReviewById(reviewId, updates, {
+    populate: [
+      { path: 'reviewerId', select: 'firstName lastName email role' },
+      { path: 'revieweeId', select: 'firstName lastName email role' },
+      { path: 'jobId', select: 'title' },
+    ],
+  });
 
   return updatedReview;
 };
@@ -206,7 +200,7 @@ export const updateReview = async (reviewId, userId, updateData) => {
  * @returns {Object} Success message
  */
 export const deleteReview = async (reviewId, userId, isAdmin = false) => {
-  const review = await Review.findById(reviewId);
+  const review = await reviewRepository.findReviewById(reviewId, { includeDeleted: true });
 
   if (!review) {
     throw new HttpException(404, 'Review not found');
@@ -221,9 +215,8 @@ export const deleteReview = async (reviewId, userId, isAdmin = false) => {
     throw new HttpException(403, 'You can only delete your own reviews');
   }
 
-  // Soft delete
-  review.isDeleted = true;
-  await review.save();
+  // Soft delete using repository
+  await reviewRepository.softDeleteReview(reviewId);
 
   return { message: 'Review deleted successfully' };
 };
@@ -235,38 +228,7 @@ export const deleteReview = async (reviewId, userId, isAdmin = false) => {
  * @returns {Object} Reviews and metadata
  */
 export const getReviewsForUser = async (userId, filters = {}) => {
-  const { reviewerType, page = 1, limit = 20, sort = '-createdAt' } = filters;
-
-  const query = {
-    revieweeId: userId,
-    isDeleted: false,
-  };
-
-  if (reviewerType) {
-    query.reviewerType = reviewerType;
-  }
-
-  const skip = (page - 1) * limit;
-
-  const [reviews, total] = await Promise.all([
-    Review.find(query)
-      .populate('reviewerId', 'firstName lastName email role')
-      .populate('jobId', 'title')
-      .sort(sort)
-      .skip(skip)
-      .limit(limit),
-    Review.countDocuments(query),
-  ]);
-
-  return {
-    reviews,
-    pagination: {
-      total,
-      page: parseInt(page),
-      limit: parseInt(limit),
-      pages: Math.ceil(total / limit),
-    },
-  };
+  return await reviewRepository.getReviewsForUser(userId, filters);
 };
 
 /**
@@ -275,12 +237,7 @@ export const getReviewsForUser = async (userId, filters = {}) => {
  * @returns {Array} Reviews
  */
 export const getReviewsForJob = async (jobId) => {
-  const reviews = await Review.find({ jobId, isDeleted: false })
-    .populate('reviewerId', 'firstName lastName email role')
-    .populate('revieweeId', 'firstName lastName email role')
-    .sort({ createdAt: -1 });
-
-  return reviews;
+  return await reviewRepository.getReviewsForJob(jobId);
 };
 
 /**
@@ -289,17 +246,21 @@ export const getReviewsForJob = async (jobId) => {
  * @returns {Object} Rating statistics with badge
  */
 export const getUserRatingStats = async (userId) => {
-  const user = await User.findById(userId);
-
-  if (!user) {
+  // Verify user exists
+  try {
+    await userService.getUserProfile(userId);
+  } catch {
     throw new HttpException(404, 'User not found');
   }
 
-  const trustScore = calculateTrustScore(user);
-  const badge = determineBadge(user);
+  // Get rating stats from service layer
+  const ratingStats = await ratingStatsService.getRatingStatsForUser(userId);
+
+  const trustScore = calculateTrustScore(ratingStats);
+  const badge = determineBadge(ratingStats);
 
   return {
-    ...user.ratingStats.toObject(),
+    ...ratingStats.toObject(),
     trustScore,
     badge,
   };
@@ -314,7 +275,7 @@ export const getUserRatingStats = async (userId) => {
 export const reportReview = async (reviewId, reportData) => {
   const { userId, reason } = reportData;
 
-  const review = await Review.findById(reviewId);
+  const review = await reviewRepository.findReviewById(reviewId, { includeDeleted: true });
 
   if (!review) {
     throw new HttpException(404, 'Review not found');

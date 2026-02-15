@@ -15,7 +15,10 @@ dotenv.config({ path: path.join(__dirname, '../../.env') });
  */
 class EnvConfig {
   constructor() {
-    this.validateRequiredEnvVars();
+    // Skip validation in test environment - tests use mocks
+    if (process.env.NODE_ENV !== 'test') {
+      this.validateRequiredEnvVars();
+    }
   }
 
   /**

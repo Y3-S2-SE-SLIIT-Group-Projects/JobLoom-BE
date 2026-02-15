@@ -1,9 +1,14 @@
 import mongoose from 'mongoose';
-import User from '../users/user.model.js';
+import logger from '../../config/logger.config.js';
+import { EventEmitter } from 'events';
+
+// Event emitter for rating stats update failures
+export const ratingStatsEventEmitter = new EventEmitter();
 
 /**
  * Review Model
- * Complete schema for Review & Rating Component
+ * Schema definition only - business logic extracted to service layer
+ * Follows Single Responsibility Principle
  */
 const reviewSchema = new mongoose.Schema(
   {
@@ -118,12 +123,27 @@ reviewSchema.query.active = function () {
   return this.where({ isDeleted: false });
 };
 
-// Post-save hook to update user rating statistics
+// Post-save hook to trigger rating stats update
+// Delegates to service layer instead of containing business logic
 reviewSchema.post('save', async function (doc) {
   try {
+    // Import dynamically to avoid circular dependency
+    const { updateUserRatingStats } = await import('./rating-stats.service.js');
     await updateUserRatingStats(doc.revieweeId);
   } catch (error) {
-    console.error('Error updating user rating stats:', error);
+    logger.error('Failed to update user rating stats after review save', {
+      reviewId: doc._id,
+      revieweeId: doc.revieweeId,
+      error: error.message,
+      stack: error.stack,
+    });
+    // Emit event for monitoring/alerting systems
+    ratingStatsEventEmitter.emit('updateFailed', {
+      operation: 'save',
+      reviewId: doc._id,
+      revieweeId: doc.revieweeId,
+      error,
+    });
   }
 });
 
@@ -131,9 +151,21 @@ reviewSchema.post('save', async function (doc) {
 reviewSchema.post('findOneAndUpdate', async function (doc) {
   if (doc) {
     try {
+      const { updateUserRatingStats } = await import('./rating-stats.service.js');
       await updateUserRatingStats(doc.revieweeId);
     } catch (error) {
-      console.error('Error updating user rating stats:', error);
+      logger.error('Failed to update user rating stats after review update', {
+        reviewId: doc._id,
+        revieweeId: doc.revieweeId,
+        error: error.message,
+        stack: error.stack,
+      });
+      ratingStatsEventEmitter.emit('updateFailed', {
+        operation: 'update',
+        reviewId: doc._id,
+        revieweeId: doc.revieweeId,
+        error,
+      });
     }
   }
 });
@@ -142,92 +174,24 @@ reviewSchema.post('findOneAndUpdate', async function (doc) {
 reviewSchema.post('findOneAndDelete', async function (doc) {
   if (doc) {
     try {
+      const { updateUserRatingStats } = await import('./rating-stats.service.js');
       await updateUserRatingStats(doc.revieweeId);
     } catch (error) {
-      console.error('Error updating user rating stats:', error);
+      logger.error('Failed to update user rating stats after review delete', {
+        reviewId: doc._id,
+        revieweeId: doc.revieweeId,
+        error: error.message,
+        stack: error.stack,
+      });
+      ratingStatsEventEmitter.emit('updateFailed', {
+        operation: 'delete',
+        reviewId: doc._id,
+        revieweeId: doc.revieweeId,
+        error,
+      });
     }
   }
 });
-
-/**
- * Helper function to update user rating statistics
- * @param {ObjectId} userId - User ID to update stats for
- */
-async function updateUserRatingStats(userId) {
-  const Review = mongoose.model('Review');
-
-  // Aggregate reviews for this user
-  const stats = await Review.aggregate([
-    {
-      $match: {
-        revieweeId: userId,
-        isDeleted: false,
-      },
-    },
-    {
-      $group: {
-        _id: null,
-        averageRating: { $avg: '$rating' },
-        totalReviews: { $sum: 1 },
-        rating5: {
-          $sum: {
-            $cond: [{ $eq: ['$rating', 5] }, 1, 0],
-          },
-        },
-        rating4: {
-          $sum: {
-            $cond: [{ $eq: ['$rating', 4] }, 1, 0],
-          },
-        },
-        rating3: {
-          $sum: {
-            $cond: [{ $eq: ['$rating', 3] }, 1, 0],
-          },
-        },
-        rating2: {
-          $sum: {
-            $cond: [{ $eq: ['$rating', 2] }, 1, 0],
-          },
-        },
-        rating1: {
-          $sum: {
-            $cond: [{ $eq: ['$rating', 1] }, 1, 0],
-          },
-        },
-      },
-    },
-  ]);
-
-  // Update user's rating stats
-  if (stats.length > 0) {
-    const { averageRating, totalReviews, rating5, rating4, rating3, rating2, rating1 } = stats[0];
-
-    await User.findByIdAndUpdate(userId, {
-      'ratingStats.averageRating': Math.round(averageRating * 10) / 10, // Round to 1 decimal
-      'ratingStats.totalReviews': totalReviews,
-      'ratingStats.ratingDistribution': {
-        5: rating5,
-        4: rating4,
-        3: rating3,
-        2: rating2,
-        1: rating1,
-      },
-    });
-  } else {
-    // No reviews, reset to defaults
-    await User.findByIdAndUpdate(userId, {
-      'ratingStats.averageRating': 0,
-      'ratingStats.totalReviews': 0,
-      'ratingStats.ratingDistribution': {
-        5: 0,
-        4: 0,
-        3: 0,
-        2: 0,
-        1: 0,
-      },
-    });
-  }
-}
 
 const Review = mongoose.model('Review', reviewSchema);
 

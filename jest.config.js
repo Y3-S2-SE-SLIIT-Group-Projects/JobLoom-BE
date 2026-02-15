@@ -44,8 +44,8 @@ export default {
   // Module name mapper (for path aliases if needed)
   moduleNameMapper: {},
 
-  // Setup files
-  // setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
+  // Setup files - runs before each test file
+  setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
 
   // Test timeout
   testTimeout: 30000,
