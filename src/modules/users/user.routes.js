@@ -8,7 +8,6 @@ import {
   deleteUser,
 } from './user.controller.js';
 import { protect } from '../../middleware/auth/authMiddleware.js';
-import { authorize } from '../../middleware/auth/roleMiddleware.js';
 import { registerValidation, loginValidation, updateProfileValidation } from './user.validation.js';
 import upload from '../../middleware/uploads/fileUpload.js';
 

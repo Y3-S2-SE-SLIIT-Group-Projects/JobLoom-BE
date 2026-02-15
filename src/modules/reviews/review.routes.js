@@ -1,7 +1,7 @@
 import express from 'express';
 import * as reviewController from './review.controller.js';
 import * as reviewValidation from './review.validation.js';
-import { authenticate } from '../../middleware/auth.middleware.js';
+import { protect } from '../../middleware/auth/authMiddleware.js';
 import { validate } from '../../middleware/validation.middleware.js';
 
 const router = express.Router();
@@ -9,14 +9,10 @@ const router = express.Router();
 /**
  * Review Routes
  * All routes for Review & Rating Component
+ * IMPORTANT: Specific routes BEFORE parametric routes to avoid conflicts
  */
 
 // Public routes (no authentication required)
-
-/**
- * Get single review by ID
- */
-router.get('/:id', reviewValidation.getReviewValidation, validate, reviewController.getReviewById);
 
 /**
  * Get all reviews for a user
@@ -68,6 +64,12 @@ router.get(
   reviewController.getJobSeekerReviews
 );
 
+/**
+ * Get single review by ID
+ * MUST be after specific routes to avoid catching them
+ */
+router.get('/:id', reviewValidation.getReviewValidation, validate, reviewController.getReviewById);
+
 // Protected routes (authentication required)
 
 /**
@@ -75,7 +77,7 @@ router.get(
  */
 router.post(
   '/',
-  authenticate,
+  protect,
   reviewValidation.createReviewValidation,
   validate,
   reviewController.createReview
@@ -86,7 +88,7 @@ router.post(
  */
 router.put(
   '/:id',
-  authenticate,
+  protect,
   reviewValidation.updateReviewValidation,
   validate,
   reviewController.updateReview
@@ -97,7 +99,7 @@ router.put(
  */
 router.delete(
   '/:id',
-  authenticate,
+  protect,
   reviewValidation.deleteReviewValidation,
   validate,
   reviewController.deleteReview
@@ -108,7 +110,7 @@ router.delete(
  */
 router.post(
   '/:id/report',
-  authenticate,
+  protect,
   reviewValidation.reportReviewValidation,
   validate,
   reviewController.reportReview

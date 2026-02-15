@@ -32,6 +32,7 @@ export const createReviewValidation = [
   body('comment')
     .optional()
     .trim()
+    .escape()
     .isLength({ max: 1000 })
     .withMessage('Comment cannot exceed 1000 characters'),
 
@@ -69,6 +70,7 @@ export const updateReviewValidation = [
   body('comment')
     .optional()
     .trim()
+    .escape() // Sanitize HTML to prevent XSS attacks
     .isLength({ max: 1000 })
     .withMessage('Comment cannot exceed 1000 characters'),
 
@@ -126,6 +128,7 @@ export const reportReviewValidation = [
     .notEmpty()
     .withMessage('Reason is required')
     .trim()
+    .escape() // Sanitize HTML to prevent XSS attacks
     .isLength({ min: 10, max: 500 })
     .withMessage('Reason must be between 10 and 500 characters'),
 ];

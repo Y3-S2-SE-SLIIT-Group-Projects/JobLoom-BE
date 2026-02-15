@@ -130,15 +130,17 @@ export const updateUserRatingStats = async (userId) => {
  * Calculate trust score for a user
  * Formula: (averageRating * 20) + (totalReviews * 0.5)
  * Maximum score: 105 (5 stars * 20 + 10 reviews * 0.5)
- * @param {Object} user - User object with ratingStats
+ * @param {Object} ratingStats - Rating stats object (can be from RatingStats model or user.ratingStats)
  * @returns {number} Trust score
  */
-export const calculateTrustScore = (user) => {
-  if (!user || !user.ratingStats) {
+export const calculateTrustScore = (ratingStats) => {
+  if (!ratingStats) {
     return 0;
   }
 
-  const { averageRating, totalReviews } = user.ratingStats;
+  // Handle both direct ratingStats object and nested user.ratingStats
+  const stats = ratingStats.ratingStats || ratingStats;
+  const { averageRating, totalReviews } = stats;
 
   const ratingScore = (averageRating || 0) * 20;
   const reviewScore = Math.min((totalReviews || 0) * 0.5, 10); // Cap review contribution at 10
@@ -151,15 +153,17 @@ export const calculateTrustScore = (user) => {
 
 /**
  * Determine badge for user based on rating and reviews
- * @param {Object} user - User object with ratingStats
+ * @param {Object} ratingStats - Rating stats object (can be from RatingStats model or user.ratingStats)
  * @returns {string|null} Badge name or null
  */
-export const determineBadge = (user) => {
-  if (!user || !user.ratingStats) {
+export const determineBadge = (ratingStats) => {
+  if (!ratingStats) {
     return null;
   }
 
-  const { averageRating, totalReviews } = user.ratingStats;
+  // Handle both direct ratingStats object and nested user.ratingStats
+  const stats = ratingStats.ratingStats || ratingStats;
+  const { averageRating, totalReviews } = stats;
 
   // No badge if no reviews
   if (totalReviews === 0) {
