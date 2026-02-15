@@ -12,10 +12,8 @@ import { sendSuccess, sendCreated } from '../../utils/response.utils.js';
  * @access  Private (Employer only)
  */
 export const createJob = async (req, res) => {
-  // TODO: Replace with actual authentication middleware
-  // For now, use static employer ID until user management is complete
-  const TEMP_EMPLOYER_ID = '507f1f77bcf86cd799439011';
-  const employerId = req.user?.userId || TEMP_EMPLOYER_ID;
+  // Get employer ID from authenticated user
+  const employerId = req.user._id.toString();
 
   const job = await jobService.createJob(req.body, employerId);
 
@@ -52,9 +50,8 @@ export const getNearbyJobs = async (req, res) => {
  * @access  Private (Employer only)
  */
 export const getEmployerJobs = async (req, res) => {
-  // TODO: Replace with actual authentication middleware
-  const TEMP_EMPLOYER_ID = '507f1f77bcf86cd799439011';
-  const employerId = req.user?.userId || TEMP_EMPLOYER_ID;
+  // Get employer ID from authenticated user
+  const employerId = req.user._id.toString();
 
   const { includeInactive, status } = req.query;
 
@@ -72,9 +69,8 @@ export const getEmployerJobs = async (req, res) => {
  * @access  Private (Employer only)
  */
 export const getEmployerStats = async (req, res) => {
-  // TODO: Replace with actual authentication middleware
-  const TEMP_EMPLOYER_ID = '507f1f77bcf86cd799439011';
-  const employerId = req.user?.userId || TEMP_EMPLOYER_ID;
+  // Get employer ID from authenticated user
+  const employerId = req.user._id.toString();
 
   const stats = await jobService.getEmployerStats(employerId);
 
@@ -98,9 +94,8 @@ export const getJobById = async (req, res) => {
  * @access  Private (Employer only - own jobs)
  */
 export const updateJob = async (req, res) => {
-  // TODO: Replace with actual authentication middleware
-  const TEMP_EMPLOYER_ID = '507f1f77bcf86cd799439011';
-  const employerId = req.user?.userId || TEMP_EMPLOYER_ID;
+  // Get employer ID from authenticated user
+  const employerId = req.user._id.toString();
 
   const job = await jobService.updateJob(req.params.id, employerId, req.body);
 
@@ -113,9 +108,8 @@ export const updateJob = async (req, res) => {
  * @access  Private (Employer only - own jobs)
  */
 export const closeJob = async (req, res) => {
-  // TODO: Replace with actual authentication middleware
-  const TEMP_EMPLOYER_ID = '507f1f77bcf86cd799439011';
-  const employerId = req.user?.userId || TEMP_EMPLOYER_ID;
+  // Get employer ID from authenticated user
+  const employerId = req.user._id.toString();
 
   const job = await jobService.closeJob(req.params.id, employerId);
 
@@ -128,9 +122,8 @@ export const closeJob = async (req, res) => {
  * @access  Private (Employer only - own jobs)
  */
 export const markJobAsFilled = async (req, res) => {
-  // TODO: Replace with actual authentication middleware
-  const TEMP_EMPLOYER_ID = '507f1f77bcf86cd799439011';
-  const employerId = req.user?.userId || TEMP_EMPLOYER_ID;
+  // Get employer ID from authenticated user
+  const employerId = req.user._id.toString();
 
   const job = await jobService.markJobAsFilled(req.params.id, employerId);
 
@@ -143,9 +136,8 @@ export const markJobAsFilled = async (req, res) => {
  * @access  Private (Employer only - own jobs)
  */
 export const deleteJob = async (req, res) => {
-  // TODO: Replace with actual authentication middleware
-  const TEMP_EMPLOYER_ID = '507f1f77bcf86cd799439011';
-  const employerId = req.user?.userId || TEMP_EMPLOYER_ID;
+  // Get employer ID from authenticated user
+  const employerId = req.user._id.toString();
 
   await jobService.deleteJob(req.params.id, employerId);
 
