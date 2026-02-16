@@ -2,7 +2,8 @@ import mongoose from 'mongoose';
 
 /**
  * Application Model
- * Minimal schema for review eligibility validation
+ * Tracks job applications from job seekers to employer postings,
+ * including status lifecycle, audit trail, and soft-delete support.
  */
 const applicationSchema = new mongoose.Schema(
   {
@@ -45,6 +46,44 @@ const applicationSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    resumeUrl: {
+      type: String,
+      trim: true,
+    },
+    statusHistory: [
+      {
+        status: {
+          type: String,
+          enum: ['pending', 'reviewed', 'shortlisted', 'accepted', 'rejected', 'withdrawn'],
+          required: true,
+        },
+        changedAt: {
+          type: Date,
+          default: Date.now,
+        },
+        changedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+        },
+      },
+    ],
+    employerNotes: {
+      type: String,
+      trim: true,
+      maxlength: [500, 'Employer notes cannot exceed 500 characters'],
+    },
+    interviewDate: {
+      type: Date,
+    },
+    withdrawalReason: {
+      type: String,
+      trim: true,
+      maxlength: [500, 'Withdrawal reason cannot exceed 500 characters'],
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
   },
   {
     timestamps: true,
@@ -59,6 +98,24 @@ applicationSchema.index({ status: 1 });
 applicationSchema.index({ jobSeekerId: 1 });
 applicationSchema.index({ employerId: 1 });
 applicationSchema.index({ createdAt: -1 });
+applicationSchema.index({ jobId: 1, status: 1 });
+applicationSchema.index({ employerId: 1, status: 1 });
+
+// Pre-save hook: push to statusHistory whenever status is modified
+applicationSchema.pre('save', function () {
+  if (this.isModified('status')) {
+    this.statusHistory.push({
+      status: this.status,
+      changedAt: new Date(),
+      changedBy: this._statusChangedBy || undefined,
+    });
+  }
+});
+
+// Query helper to find active applications
+applicationSchema.query.active = function () {
+  return this.where({ isActive: true });
+};
 
 const Application = mongoose.model('Application', applicationSchema);
 
