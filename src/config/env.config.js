@@ -97,6 +97,27 @@ class EnvConfig {
   }
 
   /**
+   * Get SMS API Base URL
+   */
+  get smsApiBaseUrl() {
+    return process.env.TEXT_LK_API_BASE_URL || 'https://app.text.lk/api/v3/';
+  }
+
+  /**
+   * Get SMS API Token
+   */
+  get smsApiToken() {
+    return process.env.TEXT_LK_API_TOKEN;
+  }
+
+  /**
+   * Get SMS Sender ID
+   */
+  get smsSenderId() {
+    return process.env.TEXT_LK_SENDER_ID || 'TextLKDemo';
+  }
+
+  /**
    * Get all configuration as an object
    */
   getAll() {
@@ -108,6 +129,9 @@ class EnvConfig {
       port: this.port,
       mongodbUri: this.mongodbUri,
       logLevel: this.logLevel,
+      smsApiBaseUrl: this.smsApiBaseUrl,
+      smsApiToken: this.smsApiToken,
+      smsSenderId: this.smsSenderId,
     };
   }
 }

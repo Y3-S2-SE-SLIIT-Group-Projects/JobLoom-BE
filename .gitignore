@@ -147,4 +147,7 @@ vite.config.ts.timestamp-*
 # Project specific
 .DS_Store
 
+# Uploaded files (local/dev artifacts)
+uploads/
+
 Requirement.md
