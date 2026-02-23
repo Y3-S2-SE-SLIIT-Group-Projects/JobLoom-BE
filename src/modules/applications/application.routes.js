@@ -1,7 +1,7 @@
 import express from 'express';
 import * as applicationController from './application.controller.js';
 import * as applicationValidation from './application.validation.js';
-import { authenticate } from '../../middleware/auth.middleware.js';
+import { protect } from '../../middleware/auth/authMiddleware.js';
 import { requireJobSeeker, requireEmployer } from '../../middleware/role.middleware.js';
 import { validate } from '../../middleware/validation.middleware.js';
 
@@ -27,11 +27,24 @@ router.get('/check/:jobId/:userId', applicationController.checkApplicationEligib
  */
 router.get(
   '/my-applications',
-  authenticate,
+  protect,
   requireJobSeeker,
   applicationValidation.getMyApplicationsValidation,
   validate,
   applicationController.getMyApplications
+);
+
+/**
+ * Get aggregate application stats for a job (employer dashboard)
+ * Must be defined before /job/:jobId to avoid :jobId consuming "stats"
+ */
+router.get(
+  '/job/:jobId/stats',
+  protect,
+  requireEmployer,
+  applicationValidation.getApplicationStatsValidation,
+  validate,
+  applicationController.getApplicationStats
 );
 
 /**
@@ -40,7 +53,7 @@ router.get(
  */
 router.get(
   '/job/:jobId',
-  authenticate,
+  protect,
   requireEmployer,
   applicationValidation.getJobApplicationsValidation,
   validate,
@@ -52,7 +65,7 @@ router.get(
  */
 router.get(
   '/:id',
-  authenticate,
+  protect,
   applicationValidation.getApplicationValidation,
   validate,
   applicationController.getApplicationById
@@ -63,7 +76,7 @@ router.get(
  */
 router.post(
   '/',
-  authenticate,
+  protect,
   requireJobSeeker,
   applicationValidation.applyForJobValidation,
   validate,
@@ -75,7 +88,7 @@ router.post(
  */
 router.patch(
   '/:id/status',
-  authenticate,
+  protect,
   requireEmployer,
   applicationValidation.updateStatusValidation,
   validate,
@@ -83,11 +96,35 @@ router.patch(
 );
 
 /**
+ * Update personal notes on an application (job seeker)
+ */
+router.patch(
+  '/:id/notes',
+  protect,
+  requireJobSeeker,
+  applicationValidation.updateNotesValidation,
+  validate,
+  applicationController.updateApplicationNotes
+);
+
+/**
+ * Schedule or update an interview date (employer)
+ */
+router.patch(
+  '/:id/interview-date',
+  protect,
+  requireEmployer,
+  applicationValidation.scheduleInterviewValidation,
+  validate,
+  applicationController.scheduleInterview
+);
+
+/**
  * Withdraw an application (job seeker)
  */
 router.patch(
   '/:id/withdraw',
-  authenticate,
+  protect,
   requireJobSeeker,
   applicationValidation.withdrawApplicationValidation,
   validate,

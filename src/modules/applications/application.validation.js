@@ -17,7 +17,11 @@ export const applyForJobValidation = [
     .isLength({ max: 1000 })
     .withMessage('Cover letter cannot exceed 1000 characters'),
 
-  body('resumeUrl').optional().trim().isString().withMessage('Resume URL must be a string'),
+  body('resumeUrl')
+    .optional()
+    .trim()
+    .isURL({ protocols: ['http', 'https'], require_protocol: true })
+    .withMessage('Resume URL must be a valid HTTP or HTTPS URL'),
 ];
 
 export const withdrawApplicationValidation = [
@@ -80,6 +84,36 @@ export const getMyApplicationsValidation = [
     .withMessage('Limit must be between 1 and 100'),
 ];
 
+export const getApplicationStatsValidation = [
+  param('jobId').isMongoId().withMessage('Invalid job ID'),
+];
+
+export const updateNotesValidation = [
+  param('id').isMongoId().withMessage('Invalid application ID'),
+
+  body('notes')
+    .optional({ nullable: true })
+    .trim()
+    .isLength({ max: 500 })
+    .withMessage('Notes cannot exceed 500 characters'),
+];
+
+export const scheduleInterviewValidation = [
+  param('id').isMongoId().withMessage('Invalid application ID'),
+
+  body('interviewDate')
+    .notEmpty()
+    .withMessage('Interview date is required')
+    .isISO8601()
+    .withMessage('Interview date must be a valid ISO 8601 date')
+    .custom((value) => {
+      if (new Date(value) <= new Date()) {
+        throw new Error('Interview date must be in the future');
+      }
+      return true;
+    }),
+];
+
 export default {
   applyForJobValidation,
   withdrawApplicationValidation,
@@ -87,4 +121,7 @@ export default {
   getApplicationValidation,
   getJobApplicationsValidation,
   getMyApplicationsValidation,
+  getApplicationStatsValidation,
+  updateNotesValidation,
+  scheduleInterviewValidation,
 };

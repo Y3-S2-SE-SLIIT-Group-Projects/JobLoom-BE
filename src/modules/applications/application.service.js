@@ -100,10 +100,16 @@ export const getApplicationById = async (applicationId, requestingUserId, reques
     throw new HttpException(403, 'You are not authorized to view this application');
   }
 
-  // If the requester is the job seeker, strip employerNotes from the response
+  // Strip fields that are private to the other party
   if (isJobSeeker && !isAdmin) {
     const applicationObj = application.toObject();
     delete applicationObj.employerNotes;
+    return applicationObj;
+  }
+
+  if (isEmployer && !isAdmin) {
+    const applicationObj = application.toObject();
+    delete applicationObj.notes;
     return applicationObj;
   }
 
@@ -119,11 +125,7 @@ export const getApplicationById = async (applicationId, requestingUserId, reques
 export const getMyApplications = async (jobSeekerId, filters = {}) => {
   const { status, page = 1, limit = 20, sort = '-createdAt' } = filters;
 
-  const query = {
-    jobSeekerId,
-    isActive: true,
-  };
-
+  const query = { jobSeekerId };
   if (status) {
     query.status = status;
   }
@@ -132,12 +134,13 @@ export const getMyApplications = async (jobSeekerId, filters = {}) => {
 
   const [applications, total] = await Promise.all([
     Application.find(query)
+      .active()
       .populate('jobId', 'title category status')
       .populate('employerId', 'firstName lastName email')
       .sort(sort)
       .skip(skip)
       .limit(limit),
-    Application.countDocuments(query),
+    Application.countDocuments(query).active(),
   ]);
 
   return {
@@ -171,11 +174,7 @@ export const getJobApplications = async (jobId, employerId, filters = {}) => {
     throw new HttpException(403, 'You are not authorized to view applications for this job');
   }
 
-  const query = {
-    jobId,
-    isActive: true,
-  };
-
+  const query = { jobId };
   if (status) {
     query.status = status;
   }
@@ -184,12 +183,13 @@ export const getJobApplications = async (jobId, employerId, filters = {}) => {
 
   const [applications, total] = await Promise.all([
     Application.find(query)
+      .active()
       .populate('jobSeekerId', 'firstName lastName email skills ratingStats')
       .populate('jobId', 'title category status')
       .sort(sort)
       .skip(skip)
       .limit(limit),
-    Application.countDocuments(query),
+    Application.countDocuments(query).active(),
   ]);
 
   return {
@@ -217,13 +217,9 @@ export const updateApplicationStatus = async (
   newStatus,
   employerNotes
 ) => {
-  const application = await Application.findById(applicationId);
+  const application = await Application.findById(applicationId).active();
 
   if (!application) {
-    throw new HttpException(404, 'Application not found');
-  }
-
-  if (!application.isActive) {
     throw new HttpException(404, 'Application not found');
   }
 
@@ -279,13 +275,9 @@ export const updateApplicationStatus = async (
  * @returns {Object} Success message
  */
 export const withdrawApplication = async (applicationId, jobSeekerId, reason) => {
-  const application = await Application.findById(applicationId);
+  const application = await Application.findById(applicationId).active();
 
   if (!application) {
-    throw new HttpException(404, 'Application not found');
-  }
-
-  if (!application.isActive) {
     throw new HttpException(404, 'Application not found');
   }
 
@@ -363,6 +355,85 @@ export const getApplicationStats = async (jobId, employerId) => {
 };
 
 /**
+ * Update the job seeker's personal notes on an application
+ * @param {ObjectId} applicationId - Application ID
+ * @param {ObjectId} jobSeekerId - Job seeker's user ID
+ * @param {string} notes - Personal notes (pass null/empty string to clear)
+ * @returns {Object} Updated application (without employerNotes)
+ */
+export const updateApplicationNotes = async (applicationId, jobSeekerId, notes) => {
+  const application = await Application.findById(applicationId).active();
+
+  if (!application) {
+    throw new HttpException(404, 'Application not found');
+  }
+
+  if (application.jobSeekerId.toString() !== jobSeekerId.toString()) {
+    throw new HttpException(403, 'You are not authorized to update notes for this application');
+  }
+
+  application.notes = notes ?? '';
+  await application.save();
+
+  await application.populate([
+    { path: 'jobId', select: 'title category status' },
+    { path: 'jobSeekerId', select: 'firstName lastName email skills' },
+    { path: 'employerId', select: 'firstName lastName email' },
+  ]);
+
+  const applicationObj = application.toObject();
+  delete applicationObj.employerNotes;
+  return applicationObj;
+};
+
+/**
+ * Schedule (or update) an interview date for an application (employer action)
+ * @param {ObjectId} applicationId - Application ID
+ * @param {ObjectId} employerId - Employer's user ID
+ * @param {Date} interviewDate - Proposed interview date (must be in the future)
+ * @returns {Object} Updated application
+ */
+export const scheduleInterview = async (applicationId, employerId, interviewDate) => {
+  const application = await Application.findById(applicationId).active();
+
+  if (!application) {
+    throw new HttpException(404, 'Application not found');
+  }
+
+  if (application.employerId.toString() !== employerId.toString()) {
+    throw new HttpException(
+      403,
+      'You are not authorized to schedule an interview for this application'
+    );
+  }
+
+  // Interview scheduling only makes sense before a final decision is reached
+  const finalStatuses = ['accepted', 'rejected', 'withdrawn'];
+  if (finalStatuses.includes(application.status)) {
+    throw new HttpException(
+      400,
+      `Cannot schedule an interview for an application with status '${application.status}'`
+    );
+  }
+
+  // Guard against stale dates slipping past validation (e.g. clock skew)
+  if (new Date(interviewDate) <= new Date()) {
+    throw new HttpException(400, 'Interview date must be in the future');
+  }
+
+  application.interviewDate = new Date(interviewDate);
+  await application.save();
+
+  await application.populate([
+    { path: 'jobId', select: 'title category status' },
+    { path: 'jobSeekerId', select: 'firstName lastName email skills' },
+    { path: 'employerId', select: 'firstName lastName email' },
+  ]);
+
+  return application;
+};
+
+/**
  * Check application eligibility (used by Review module)
  * @param {ObjectId} jobId - Job ID
  * @param {ObjectId} userId - User ID
@@ -389,5 +460,7 @@ export default {
   updateApplicationStatus,
   withdrawApplication,
   getApplicationStats,
+  updateApplicationNotes,
+  scheduleInterview,
   checkApplicationEligibility,
 };

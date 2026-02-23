@@ -45,6 +45,7 @@ const applicationSchema = new mongoose.Schema(
     notes: {
       type: String,
       trim: true,
+      maxlength: [500, 'Notes cannot exceed 500 characters'],
     },
     resumeUrl: {
       type: String,

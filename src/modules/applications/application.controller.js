@@ -12,7 +12,7 @@ import { sendSuccess, sendCreated } from '../../utils/response.utils.js';
  * @access  Private (Job Seeker)
  */
 export const applyForJob = async (req, res) => {
-  const application = await applicationService.applyForJob(req.user.userId, req.body);
+  const application = await applicationService.applyForJob(req.user._id, req.body);
 
   sendCreated(res, 'Application submitted successfully', { application });
 };
@@ -25,7 +25,7 @@ export const applyForJob = async (req, res) => {
 export const getApplicationById = async (req, res) => {
   const application = await applicationService.getApplicationById(
     req.params.id,
-    req.user.userId,
+    req.user._id,
     req.user.role
   );
 
@@ -45,7 +45,7 @@ export const getMyApplications = async (req, res) => {
     sort: req.query.sort,
   };
 
-  const result = await applicationService.getMyApplications(req.user.userId, filters);
+  const result = await applicationService.getMyApplications(req.user._id, filters);
 
   sendSuccess(res, 'Applications retrieved successfully', result);
 };
@@ -65,7 +65,7 @@ export const getJobApplications = async (req, res) => {
 
   const result = await applicationService.getJobApplications(
     req.params.jobId,
-    req.user.userId,
+    req.user._id,
     filters
   );
 
@@ -80,7 +80,7 @@ export const getJobApplications = async (req, res) => {
 export const updateApplicationStatus = async (req, res) => {
   const application = await applicationService.updateApplicationStatus(
     req.params.id,
-    req.user.userId,
+    req.user._id,
     req.body.status,
     req.body.employerNotes
   );
@@ -96,11 +96,52 @@ export const updateApplicationStatus = async (req, res) => {
 export const withdrawApplication = async (req, res) => {
   const result = await applicationService.withdrawApplication(
     req.params.id,
-    req.user.userId,
+    req.user._id,
     req.body.withdrawalReason
   );
 
   sendSuccess(res, result.message);
+};
+
+/**
+ * @route   PATCH /api/applications/:id/notes
+ * @desc    Update the job seeker's personal notes on an application
+ * @access  Private (Job Seeker)
+ */
+export const updateApplicationNotes = async (req, res) => {
+  const application = await applicationService.updateApplicationNotes(
+    req.params.id,
+    req.user._id,
+    req.body.notes
+  );
+
+  sendSuccess(res, 'Application notes updated successfully', { application });
+};
+
+/**
+ * @route   PATCH /api/applications/:id/interview-date
+ * @desc    Schedule or update an interview date for an application
+ * @access  Private (Employer)
+ */
+export const scheduleInterview = async (req, res) => {
+  const application = await applicationService.scheduleInterview(
+    req.params.id,
+    req.user._id,
+    req.body.interviewDate
+  );
+
+  sendSuccess(res, 'Interview date scheduled successfully', { application });
+};
+
+/**
+ * @route   GET /api/applications/job/:jobId/stats
+ * @desc    Get aggregate application stats for a job
+ * @access  Private (Employer)
+ */
+export const getApplicationStats = async (req, res) => {
+  const stats = await applicationService.getApplicationStats(req.params.jobId, req.user._id);
+
+  sendSuccess(res, 'Application stats retrieved successfully', { stats });
 };
 
 /**
@@ -124,5 +165,8 @@ export default {
   getJobApplications,
   updateApplicationStatus,
   withdrawApplication,
+  getApplicationStats,
+  updateApplicationNotes,
+  scheduleInterview,
   checkApplicationEligibility,
 };
