@@ -97,6 +97,27 @@ class EnvConfig {
   }
 
   /**
+   * Get Text.lk API Base URL
+   */
+  get textLkApiBaseUrl() {
+    return process.env.TEXT_LK_API_BASE_URL || 'https://app.text.lk/api/v3';
+  }
+
+  /**
+   * Get Text.lk API Token
+   */
+  get textLkApiToken() {
+    return process.env.TEXT_LK_API_TOKEN;
+  }
+
+  /**
+   * Get Text.lk Sender ID
+   */
+  get textLkSenderId() {
+    return process.env.TEXT_LK_SENDER_ID || 'JobLoom';
+  }
+
+  /**
    * Get all configuration as an object
    */
   getAll() {
@@ -108,6 +129,9 @@ class EnvConfig {
       port: this.port,
       mongodbUri: this.mongodbUri,
       logLevel: this.logLevel,
+      textLkApiBaseUrl: this.textLkApiBaseUrl,
+      textLkApiToken: this.textLkApiToken ? '***' : undefined,
+      textLkSenderId: this.textLkSenderId,
     };
   }
 }
