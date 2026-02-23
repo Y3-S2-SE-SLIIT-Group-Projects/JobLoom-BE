@@ -22,7 +22,7 @@ export default [
     },
     rules: {
       'no-console': 'off',
-      'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       'no-process-exit': 'off',
       'prefer-const': 'warn',
       'no-var': 'error',

@@ -1,7 +1,8 @@
 import express from 'express';
 import * as jobController from './job.controller.js';
 import * as jobValidation from './job.validation.js';
-// import { authenticate } from '../../middleware/auth.middleware.js'; // TODO: Uncomment when authentication is ready
+import { protect } from '../../middleware/auth/authMiddleware.js';
+import { authorize } from '../../middleware/auth/roleMiddleware.js';
 import { validate } from '../../middleware/validation.middleware.js';
 
 const router = express.Router();
@@ -36,11 +37,12 @@ router.get('/:id', jobValidation.getJobValidation, validate, jobController.getJo
 
 /**
  * Create a new job posting
- * TODO: Add authenticate middleware when authentication is implemented
+ * Protected route - Employer only
  */
 router.post(
   '/',
-  // authenticate, // Uncomment when authentication is ready
+  protect,
+  authorize('employer'),
   jobValidation.createJobValidation,
   validate,
   jobController.createJob
@@ -48,11 +50,12 @@ router.post(
 
 /**
  * Get jobs created by employer (My Jobs)
- * TODO: Add authenticate middleware when authentication is implemented
+ * Protected route - Employer only
  */
 router.get(
   '/employer/my-jobs',
-  // authenticate, // Uncomment when authentication is ready
+  protect,
+  authorize('employer'),
   jobValidation.getEmployerJobsValidation,
   validate,
   jobController.getEmployerJobs
@@ -60,21 +63,18 @@ router.get(
 
 /**
  * Get employer statistics for dashboard
- * TODO: Add authenticate middleware when authentication is implemented
+ * Protected route - Employer only
  */
-router.get(
-  '/employer/stats',
-  // authenticate, // Uncomment when authentication is ready
-  jobController.getEmployerStats
-);
+router.get('/employer/stats', protect, authorize('employer'), jobController.getEmployerStats);
 
 /**
  * Update job details
- * TODO: Add authenticate middleware when authentication is implemented
+ * Protected route - Employer only (own jobs)
  */
 router.put(
   '/:id',
-  // authenticate, // Uncomment when authentication is ready
+  protect,
+  authorize('employer'),
   jobValidation.updateJobValidation,
   validate,
   jobController.updateJob
@@ -82,11 +82,12 @@ router.put(
 
 /**
  * Close a job posting
- * TODO: Add authenticate middleware when authentication is implemented
+ * Protected route - Employer only (own jobs)
  */
 router.patch(
   '/:id/close',
-  // authenticate, // Uncomment when authentication is ready
+  protect,
+  authorize('employer'),
   jobValidation.getJobValidation,
   validate,
   jobController.closeJob
@@ -94,11 +95,12 @@ router.patch(
 
 /**
  * Mark job as filled
- * TODO: Add authenticate middleware when authentication is implemented
+ * Protected route - Employer only (own jobs)
  */
 router.patch(
   '/:id/filled',
-  // authenticate, // Uncomment when authentication is ready
+  protect,
+  authorize('employer'),
   jobValidation.getJobValidation,
   validate,
   jobController.markJobAsFilled
@@ -106,11 +108,12 @@ router.patch(
 
 /**
  * Delete a job (soft delete)
- * TODO: Add authenticate middleware when authentication is implemented
+ * Protected route - Employer only (own jobs)
  */
 router.delete(
   '/:id',
-  // authenticate, // Uncomment when authentication is ready
+  protect,
+  authorize('employer'),
   jobValidation.deleteJobValidation,
   validate,
   jobController.deleteJob

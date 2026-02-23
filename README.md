@@ -9,7 +9,15 @@ A complete MERN stack backend application with a modular, scalable architecture 
 - **JWT Authentication**: Secure token-based authentication system
 - **User Management**: Complete user registration, login, and profile management
 - **Job Management**: Job posting and search functionality (basic)
-- **Application Management**: Job application tracking (basic)
+- **Application Management**: Job application system with:
+  - Apply for jobs with cover letter and resume
+  - Status lifecycle (pending → reviewed → shortlisted → accepted/rejected)
+  - Application withdrawal with reason tracking
+  - Status audit trail (statusHistory)
+  - Employer notes and interview scheduling
+  - Role-based access control (job seekers vs employers)
+  - Application statistics for employer dashboard
+  - Soft-delete support
 - **Review & Rating System**: Comprehensive trust and quality system with:
   - Multi-criteria ratings (work quality, communication, punctuality, payment)
   - Weighted rating calculations
@@ -52,9 +60,12 @@ src/
 │   ├── jobs/                    # Job Management Module (Basic)
 │   │   ├── job.model.js
 │   │   └── job.routes.js
-│   ├── applications/            # Application Management Module (Basic)
+│   ├── applications/            # Application Management Module (COMPLETE)
 │   │   ├── application.model.js
-│   │   └── application.routes.js
+│   │   ├── application.controller.js
+│   │   ├── application.service.js
+│   │   ├── application.routes.js
+│   │   └── application.validation.js
 │   └── reviews/                 # Review & Rating Module (COMPLETE)
 │       ├── review.model.js
 │       ├── review.controller.js
@@ -260,6 +271,208 @@ Authorization: Bearer <token>
 ```
 
 Update own user profile.
+
+---
+
+## Job Application Management (Member 3's Component)
+
+### Apply for a Job
+
+```
+POST /api/applications
+Authorization: Bearer <token>
+```
+
+Submit a job application. **Requires job_seeker role.**
+
+**Request Body:**
+
+```json
+{
+  "jobId": "job_id_to_apply_for",
+  "coverLetter": "I am very interested in this position...",
+  "resumeUrl": "https://example.com/my-resume.pdf"
+}
+```
+
+**Response (201):**
+
+```json
+{
+  "success": true,
+  "message": "Application submitted successfully",
+  "data": {
+    "application": {
+      "_id": "...",
+      "jobId": { "title": "Farm Worker", "category": "farming", "status": "open" },
+      "jobSeekerId": {
+        "firstName": "John",
+        "lastName": "Doe",
+        "email": "john@example.com",
+        "skills": []
+      },
+      "employerId": { "firstName": "Jane", "lastName": "Smith", "email": "jane@example.com" },
+      "status": "pending",
+      "coverLetter": "I am very interested in this position...",
+      "resumeUrl": "https://example.com/my-resume.pdf",
+      "statusHistory": [{ "status": "pending", "changedAt": "2026-02-13T..." }],
+      "isActive": true,
+      "appliedAt": "2026-02-13T...",
+      "createdAt": "2026-02-13T..."
+    }
+  }
+}
+```
+
+**Business Rules:**
+
+- Job must exist and have status `open`
+- Cannot apply to your own job posting
+- Cannot apply twice for the same job (409 Conflict)
+- `employerId` is auto-populated from the Job document
+
+### Get Application by ID
+
+```
+GET /api/applications/:id
+Authorization: Bearer <token>
+```
+
+Get single application details. **Accessible by the job seeker who applied, the employer who owns the job, or an admin.**
+
+**Note:** If the requester is the job seeker, `employerNotes` is stripped from the response.
+
+### Get My Applications (Job Seeker)
+
+```
+GET /api/applications/my-applications?status=pending&page=1&limit=20
+Authorization: Bearer <token>
+```
+
+Get all applications for the authenticated job seeker. **Requires job_seeker role.**
+
+**Query Parameters:**
+
+- `status` (optional): Filter by status (pending, reviewed, shortlisted, accepted, rejected, withdrawn)
+- `page` (optional): Page number (default: 1)
+- `limit` (optional): Items per page (default: 20, max: 100)
+- `sort` (optional): Sort field (default: -createdAt)
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Applications retrieved successfully",
+  "data": {
+    "applications": [...],
+    "pagination": {
+      "total": 15,
+      "page": 1,
+      "limit": 20,
+      "pages": 1
+    }
+  }
+}
+```
+
+### Get Job Applications (Employer)
+
+```
+GET /api/applications/job/:jobId?status=pending&page=1&limit=20
+Authorization: Bearer <token>
+```
+
+Get all applications for a specific job. **Requires employer role.** The employer must own the job.
+
+**Query Parameters:**
+
+- `status` (optional): Filter by status
+- `page` (optional): Page number (default: 1)
+- `limit` (optional): Items per page (default: 20, max: 100)
+- `sort` (optional): Sort field (default: -createdAt)
+
+### Update Application Status (Employer)
+
+```
+PATCH /api/applications/:id/status
+Authorization: Bearer <token>
+```
+
+Update the status of an application. **Requires employer role.**
+
+**Request Body:**
+
+```json
+{
+  "status": "reviewed",
+  "employerNotes": "Strong candidate, good experience in farming"
+}
+```
+
+**Allowed Status Values:** `reviewed`, `shortlisted`, `accepted`, `rejected`
+
+**Status Transition Rules:**
+
+| Current Status | Can Transition To                         |
+| -------------- | ----------------------------------------- |
+| `pending`      | reviewed, shortlisted, accepted, rejected |
+| `reviewed`     | shortlisted, accepted, rejected           |
+| `shortlisted`  | accepted, rejected                        |
+| `accepted`     | _(final — no further transitions)_        |
+| `rejected`     | _(final — no further transitions)_        |
+| `withdrawn`    | _(final — no further transitions)_        |
+
+**Business Rules:**
+
+- Only the employer on the application can update the status
+- Invalid transitions return 400 with a descriptive error message
+- Each status change is recorded in `statusHistory` with timestamp and user ID
+- `reviewedAt` is automatically set on first transition to `reviewed`
+
+### Withdraw Application (Job Seeker)
+
+```
+PATCH /api/applications/:id/withdraw
+Authorization: Bearer <token>
+```
+
+Withdraw a submitted application. **Requires job_seeker role.**
+
+**Request Body:**
+
+```json
+{
+  "withdrawalReason": "I accepted another position"
+}
+```
+
+**Business Rules:**
+
+- Only the job seeker who applied can withdraw
+- Can only withdraw from `pending`, `reviewed`, or `shortlisted` status
+- Cannot withdraw after being `accepted` or `rejected`
+
+### Check Application Eligibility
+
+```
+GET /api/applications/check/:jobId/:userId
+```
+
+Check if a user has an accepted application for a job. **Public endpoint** used by the Review module for eligibility checks.
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Application check completed",
+  "data": {
+    "hasAcceptedApplication": true,
+    "application": { ... }
+  }
+}
+```
 
 ---
 

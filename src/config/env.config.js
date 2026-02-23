@@ -15,7 +15,10 @@ dotenv.config({ path: path.join(__dirname, '../../.env') });
  */
 class EnvConfig {
   constructor() {
-    this.validateRequiredEnvVars();
+    // Skip validation in test environment - tests use mocks
+    if (process.env.NODE_ENV !== 'test') {
+      this.validateRequiredEnvVars();
+    }
   }
 
   /**
@@ -97,24 +100,24 @@ class EnvConfig {
   }
 
   /**
-   * Get SMS API Base URL
+   * Get Text.lk API Base URL
    */
-  get smsApiBaseUrl() {
-    return process.env.TEXT_LK_API_BASE_URL || 'https://app.text.lk/api/v3/';
+  get textLkApiBaseUrl() {
+    return process.env.TEXT_LK_API_BASE_URL || 'https://app.text.lk/api/v3';
   }
 
   /**
-   * Get SMS API Token
+   * Get Text.lk API Token
    */
-  get smsApiToken() {
+  get textLkApiToken() {
     return process.env.TEXT_LK_API_TOKEN;
   }
 
   /**
-   * Get SMS Sender ID
+   * Get Text.lk Sender ID
    */
-  get smsSenderId() {
-    return process.env.TEXT_LK_SENDER_ID || 'TextLKDemo';
+  get textLkSenderId() {
+    return process.env.TEXT_LK_SENDER_ID || 'JobLoom';
   }
 
   /**
@@ -129,9 +132,9 @@ class EnvConfig {
       port: this.port,
       mongodbUri: this.mongodbUri,
       logLevel: this.logLevel,
-      smsApiBaseUrl: this.smsApiBaseUrl,
-      smsApiToken: this.smsApiToken,
-      smsSenderId: this.smsSenderId,
+      textLkApiBaseUrl: this.textLkApiBaseUrl,
+      textLkApiToken: this.textLkApiToken ? '***' : undefined,
+      textLkSenderId: this.textLkSenderId,
     };
   }
 }
