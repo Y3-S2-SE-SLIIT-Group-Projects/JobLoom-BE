@@ -114,6 +114,51 @@ export const deleteUser = async (req, res) => {
   }
 };
 
+/**
+ * @desc    Verify OTP
+ * @route   POST /api/users/verify-otp
+ * @access  Public
+ */
+export const verifyOTP = async (req, res) => {
+  const { phone, otp } = req.body;
+  try {
+    const data = await userService.verifyOTP(phone, otp);
+    res.json(data);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+/**
+ * @desc    Forgot Password - Send OTP
+ * @route   POST /api/users/forgot-password
+ * @access  Public
+ */
+export const forgotPassword = async (req, res) => {
+  const { phone } = req.body;
+  try {
+    const data = await userService.forgotPassword(phone);
+    res.json(data);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+/**
+ * @desc    Reset Password
+ * @route   POST /api/users/reset-password
+ * @access  Public
+ */
+export const resetPassword = async (req, res) => {
+  const { phone, otp, newPassword } = req.body;
+  try {
+    const data = await userService.resetPassword(phone, otp, newPassword);
+    res.json(data);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
 export default {
   registerUser,
   loginUser,
@@ -121,4 +166,7 @@ export default {
   getMyProfile,
   updateUserProfile,
   deleteUser,
+  verifyOTP,
+  forgotPassword,
+  resetPassword,
 };

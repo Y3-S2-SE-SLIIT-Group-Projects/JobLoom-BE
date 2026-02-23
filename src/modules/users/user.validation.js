@@ -29,3 +29,20 @@ export const changePasswordValidation = [
     .isLength({ min: 6 })
     .withMessage('New password must be at least 6 characters long'),
 ];
+
+export const verifyOTPValidation = [
+  body('phone').notEmpty().withMessage('Phone number is required'),
+  body('otp').isLength({ min: 6, max: 6 }).withMessage('OTP must be 6 digits'),
+];
+
+export const forgotPasswordValidation = [
+  body('phone').notEmpty().withMessage('Phone number is required'),
+];
+
+export const resetPasswordValidation = [
+  body('phone').notEmpty().withMessage('Phone number is required'),
+  body('otp').isLength({ min: 6, max: 6 }).withMessage('OTP must be 6 digits'),
+  body('newPassword')
+    .isLength({ min: 6 })
+    .withMessage('New password must be at least 6 characters long'),
+];

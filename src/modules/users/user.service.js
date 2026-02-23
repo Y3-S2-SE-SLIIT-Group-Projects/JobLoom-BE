@@ -1,6 +1,7 @@
 import User from './user.model.js';
 import jwt from 'jsonwebtoken';
 import envConfig from '../../config/env.config.js';
+import smsService from '../../utils/sms.service.js';
 
 const generateToken = (id) => {
   return jwt.sign({ id }, envConfig.jwtSecret, {
@@ -16,26 +17,129 @@ const generateToken = (id) => {
 export const registerUser = async (userData) => {
   const { email } = userData;
 
-  const userExists = await User.findOne({ email });
+  const userExists = await User.findOne({
+    $or: [{ email }, { phone: userData.phone }],
+  });
 
   if (userExists) {
-    throw new Error('User already exists');
+    throw new Error('User with this email or phone already exists');
   }
 
-  const user = await User.create(userData);
+  // Generate 6-digit OTP
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+  const user = await User.create({
+    ...userData,
+    otp,
+    otpExpiry,
+    isVerified: false,
+  });
 
   if (user) {
+    // Send OTP via SMS
+    try {
+      await smsService.sendOTP(user.phone, otp);
+    } catch (error) {
+      console.error('Failed to send OTP SMS during registration:', error);
+      // We still return success for user creation, they can resend OTP
+    }
+
     return {
       _id: user._id,
       firstName: user.firstName,
       lastName: user.lastName,
       email: user.email,
+      phone: user.phone,
       role: user.role,
-      token: generateToken(user._id),
+      isVerified: user.isVerified,
+      // We don't return token yet as user is not verified
     };
   } else {
     throw new Error('Invalid user data');
   }
+};
+
+/**
+ * Verify OTP
+ * @param {string} phone
+ * @param {string} otp
+ * @returns {Object} { user, token }
+ */
+export const verifyOTP = async (phone, otp) => {
+  const user = await User.findOne({
+    phone,
+    otp,
+    otpExpiry: { $gt: Date.now() },
+  });
+
+  if (!user) {
+    throw new Error('Invalid or expired OTP');
+  }
+
+  user.isVerified = true;
+  user.otp = null;
+  user.otpExpiry = null;
+  await user.save();
+
+  return {
+    _id: user._id,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    email: user.email,
+    role: user.role,
+    token: generateToken(user._id),
+  };
+};
+
+/**
+ * Forgot Password - Send OTP
+ * @param {string} phone
+ */
+export const forgotPassword = async (phone) => {
+  const user = await User.findOne({ phone });
+
+  if (!user) {
+    throw new Error('No user found with this phone number');
+  }
+
+  // Generate 6-digit OTP
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+  user.otp = otp;
+  user.otpExpiry = otpExpiry;
+  await user.save();
+
+  // Send OTP via SMS
+  await smsService.sendPasswordResetOTP(user.phone, otp);
+
+  return { message: 'OTP sent successfully' };
+};
+
+/**
+ * Reset Password
+ * @param {string} phone
+ * @param {string} otp
+ * @param {string} newPassword
+ */
+export const resetPassword = async (phone, otp, newPassword) => {
+  const user = await User.findOne({
+    phone,
+    otp,
+    otpExpiry: { $gt: Date.now() },
+  });
+
+  if (!user) {
+    throw new Error('Invalid or expired OTP');
+  }
+
+  user.password = newPassword;
+  user.otp = null;
+  user.otpExpiry = null;
+  await user.save();
+
+  return { message: 'Password reset successful' };
 };
 
 /**
@@ -140,4 +244,7 @@ export default {
   getUserProfile,
   updateUserProfile,
   deleteUser,
+  verifyOTP,
+  forgotPassword,
+  resetPassword,
 };
