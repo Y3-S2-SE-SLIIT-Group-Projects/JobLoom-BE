@@ -49,7 +49,7 @@ router.get(
  */
 router.get(
   '/employer/:employerId',
-  reviewValidation.getUserReviewsValidation,
+  reviewValidation.getEmployerReviewsValidation,
   validate,
   reviewController.getEmployerReviews
 );
@@ -59,7 +59,7 @@ router.get(
  */
 router.get(
   '/jobseeker/:jobSeekerId',
-  reviewValidation.getUserReviewsValidation,
+  reviewValidation.getJobSeekerReviewsValidation,
   validate,
   reviewController.getJobSeekerReviews
 );

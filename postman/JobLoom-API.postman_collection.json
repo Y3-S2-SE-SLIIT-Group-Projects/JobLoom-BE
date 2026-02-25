@@ -332,19 +332,9 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/reviews/job/:jobId?page=1&limit=10",
+              "raw": "{{baseUrl}}/reviews/job/:jobId",
               "host": ["{{baseUrl}}"],
               "path": ["reviews", "job", ":jobId"],
-              "query": [
-                {
-                  "key": "page",
-                  "value": "1"
-                },
-                {
-                  "key": "limit",
-                  "value": "10"
-                }
-              ],
               "variable": [
                 {
                   "key": "jobId",
@@ -371,7 +361,7 @@
                 }
               ]
             },
-            "description": "Get comprehensive rating statistics for a user.\n\n**Returns:**\n- Average rating (weighted)\n- Total reviews\n- Rating distribution\n- Trust score (0-100)\n- Badge (Elite, Top Rated, Trusted, Rising Star)\n- Criteria breakdown (work quality, communication, etc.)\n- Rating level (Excellent, Very Good, etc.)\n\n**Trust Score Algorithm:**\n- Based on average rating, review count, and completeness\n- Range: 0-100\n- Factors: consistency, volume, detail\n\n**Badges:**\n- **Elite**: 4.8+ rating, 20+ reviews\n- **Top Rated**: 4.5+ rating, 10+ reviews\n- **Trusted**: 4.0+ rating, 5+ reviews\n- **Rising Star**: 4.2+ rating, 2-4 reviews"
+            "description": "Get comprehensive rating statistics for a user.\n\n**Returns:**\n- Average rating (weighted)\n- Total reviews\n- Rating distribution\n- Trust score (0-100)\n- Badge (Elite, Top Rated, Trusted, Rising Star)\n- Criteria breakdown (work quality, communication, etc.)\n- Rating level (Excellent, Very Good, etc.)\n\n**Trust Score Algorithm:**\n- Based on average rating, review count, and completeness\n- Range: 0-100\n- Factors: consistency, volume, detail\n\n**Badges:**\n- **Elite**: 4.8+ rating, 20+ reviews\n- **Top Rated**: 4.5+ rating, 10+ reviews\n- **Trusted**: 4.0+ rating, 5+ reviews\n- **Rising Star**: 4.0+ rating, 2-4 reviews"
           }
         },
         {

@@ -1,9 +1,7 @@
-import Review from '../modules/reviews/review.model.js';
-import User from '../modules/users/user.model.js';
-
 /**
  * Rating Utility Functions
- * Business logic for rating calculations
+ * Pure calculation helpers - no database access.
+ * Stats persistence is handled by rating-stats.service.js via the RatingStats collection.
  */
 
 /**
@@ -19,111 +17,18 @@ import User from '../modules/users/user.model.js';
 export const calculateWeightedRating = (criteria) => {
   const ratings = [];
 
-  // Add all provided criteria ratings
   if (criteria.rating) ratings.push(criteria.rating);
   if (criteria.workQuality) ratings.push(criteria.workQuality);
   if (criteria.communication) ratings.push(criteria.communication);
   if (criteria.punctuality) ratings.push(criteria.punctuality);
   if (criteria.paymentOnTime) ratings.push(criteria.paymentOnTime);
 
-  // If no criteria provided, return 0
   if (ratings.length === 0) return 0;
 
-  // Calculate average
   const sum = ratings.reduce((acc, rating) => acc + rating, 0);
   const average = sum / ratings.length;
 
-  // Round to 1 decimal place
   return Math.round(average * 10) / 10;
-};
-
-/**
- * Update user rating statistics by aggregating all reviews
- * @param {ObjectId} userId - User ID
- * @returns {Object} Updated rating stats
- */
-export const updateUserRatingStats = async (userId) => {
-  // Aggregate reviews for this user
-  const stats = await Review.aggregate([
-    {
-      $match: {
-        revieweeId: userId,
-        isDeleted: false,
-      },
-    },
-    {
-      $group: {
-        _id: null,
-        averageRating: { $avg: '$rating' },
-        totalReviews: { $sum: 1 },
-        rating5: {
-          $sum: {
-            $cond: [{ $eq: ['$rating', 5] }, 1, 0],
-          },
-        },
-        rating4: {
-          $sum: {
-            $cond: [{ $eq: ['$rating', 4] }, 1, 0],
-          },
-        },
-        rating3: {
-          $sum: {
-            $cond: [{ $eq: ['$rating', 3] }, 1, 0],
-          },
-        },
-        rating2: {
-          $sum: {
-            $cond: [{ $eq: ['$rating', 2] }, 1, 0],
-          },
-        },
-        rating1: {
-          $sum: {
-            $cond: [{ $eq: ['$rating', 1] }, 1, 0],
-          },
-        },
-      },
-    },
-  ]);
-
-  let updatedStats;
-
-  if (stats.length > 0) {
-    const { averageRating, totalReviews, rating5, rating4, rating3, rating2, rating1 } = stats[0];
-
-    updatedStats = {
-      averageRating: Math.round(averageRating * 10) / 10, // Round to 1 decimal
-      totalReviews,
-      ratingDistribution: {
-        5: rating5,
-        4: rating4,
-        3: rating3,
-        2: rating2,
-        1: rating1,
-      },
-    };
-  } else {
-    // No reviews, reset to defaults
-    updatedStats = {
-      averageRating: 0,
-      totalReviews: 0,
-      ratingDistribution: {
-        5: 0,
-        4: 0,
-        3: 0,
-        2: 0,
-        1: 0,
-      },
-    };
-  }
-
-  // Update user document
-  await User.findByIdAndUpdate(userId, {
-    'ratingStats.averageRating': updatedStats.averageRating,
-    'ratingStats.totalReviews': updatedStats.totalReviews,
-    'ratingStats.ratingDistribution': updatedStats.ratingDistribution,
-  });
-
-  return updatedStats;
 };
 
 /**
@@ -235,7 +140,6 @@ export const calculateReviewCompleteness = (review) => {
 
 export default {
   calculateWeightedRating,
-  updateUserRatingStats,
   calculateTrustScore,
   determineBadge,
   getRatingLevel,
