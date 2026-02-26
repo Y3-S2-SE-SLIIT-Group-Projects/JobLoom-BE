@@ -572,6 +572,38 @@ export const hardDeleteJob = async (jobId) => {
   }
 };
 
+/**
+ * Get recommended jobs for a user based on their skills
+ * @param {Object} user - User object
+ * @returns {Promise<Array>} Recommended jobs
+ */
+export const getRecommendedJobs = async (user) => {
+  try {
+    const { skills } = user;
+
+    if (!skills || skills.length === 0) {
+      // If no skills, return latest open jobs
+      return await Job.find({ status: 'open', isActive: true }).sort({ createdAt: -1 }).limit(10);
+    }
+
+    // Find jobs that require at least one of the user's skills
+    const jobs = await Job.find({
+      status: 'open',
+      isActive: true,
+      skillsRequired: { $in: skills.map((skill) => new RegExp(skill, 'i')) },
+    })
+      .sort({ createdAt: -1 })
+      .limit(20);
+
+    logger.info(`Found ${jobs.length} recommendations for user: ${user._id}`);
+
+    return jobs;
+  } catch (error) {
+    logger.error('Error fetching recommended jobs:', error);
+    throw error;
+  }
+};
+
 export default {
   createJob,
   getJobById,
@@ -579,6 +611,7 @@ export default {
   getJobsByEmployer,
   getNearbyJobs,
   searchJobs,
+  getRecommendedJobs,
   getEmployerStats,
   updateJob,
   closeJob,

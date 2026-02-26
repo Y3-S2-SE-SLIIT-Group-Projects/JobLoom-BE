@@ -219,8 +219,28 @@ export const updateUserProfile = async (user, updates) => {
     user.profileImage = updates.profileImage;
   }
 
-  if (updates.cv) {
-    user.cv = updates.cv;
+  // Handle multiple CVs
+  if (updates.newCVs) {
+    // If user already has CVs, append new ones.
+    // If this is the first CV, make it primary.
+    const isFirstCV = user.cvs.length === 0;
+    const mappedCVs = updates.newCVs.map((cv, index) => ({
+      ...cv,
+      isPrimary: isFirstCV && index === 0,
+    }));
+    user.cvs.push(...mappedCVs);
+  }
+
+  // Handle setting a CV as primary if requested
+  if (updates.primaryCvId) {
+    user.cvs.forEach((cv) => {
+      cv.isPrimary = cv._id.toString() === updates.primaryCvId;
+    });
+  }
+
+  // Handle deleting a CV if requested
+  if (updates.deleteCvId) {
+    user.cvs = user.cvs.filter((cv) => cv._id.toString() !== updates.deleteCvId);
   }
 
   const updatedUser = await user.save();

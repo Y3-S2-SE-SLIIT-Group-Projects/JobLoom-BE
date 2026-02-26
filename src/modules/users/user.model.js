@@ -43,18 +43,26 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
-    cv: {
-      type: String, // file path for job seekers
-      default: '',
-    },
+    cvs: [
+      {
+        name: { type: String, required: true },
+        url: { type: String, required: true },
+        isPrimary: { type: Boolean, default: false },
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
     skills: {
       type: [String],
       default: [],
     },
-    experience: {
-      type: String,
-      default: '',
-    },
+    experience: [
+      {
+        title: { type: String },
+        company: { type: String },
+        duration: { type: String },
+        description: { type: String },
+      },
+    ],
     isVerified: {
       type: Boolean,
       default: false,
