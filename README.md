@@ -31,7 +31,8 @@ A complete MERN stack backend application with a modular, scalable architecture 
 - **Environment Configuration**: Centralized configuration service with validation
 - **Security**: Helmet for security headers, CORS configuration, password hashing
 - **Modular Architecture**: Clean separation of concerns with controllers, services, and models
-- **Comprehensive Testing**: Unit and integration tests with Jest and Supertest
+- **Comprehensive Testing**: Unit, integration, and performance tests with Jest, Supertest, and k6
+- **SMS Gateway Integration**: OTP-based user verification and password reset via Text.lk API
 
 ## Project Structure
 
@@ -254,6 +255,74 @@ Authorization: Bearer <token>
 ```
 
 Get authenticated user profile.
+
+### Verify Registration (OTP)
+
+```
+POST /api/users/verify-registration
+```
+
+Verify user registration using the OTP sent via SMS.
+
+**Request Body:**
+
+```json
+{
+  "phone": "94712345678",
+  "otp": "123456"
+}
+```
+
+### Forgot Password (OTP)
+
+```
+POST /api/users/forgot-password
+```
+
+Send an OTP to the user's phone for password reset.
+
+**Request Body:**
+
+```json
+{
+  "phone": "94712345678"
+}
+```
+
+### Verify Password Reset (OTP)
+
+```
+POST /api/users/verify-password-reset
+```
+
+Verify the OTP for password reset and receive a temporary reset token.
+
+**Request Body:**
+
+```json
+{
+  "phone": "94712345678",
+  "otp": "123456"
+}
+```
+
+### Reset Password
+
+```
+POST /api/users/reset-password
+```
+
+Reset the user's password using the temporary reset token.
+
+**Request Body:**
+
+```json
+{
+  "phone": "94712345678",
+  "resetToken": "...",
+  "password": "newpassword123"
+}
+```
 
 ### Get User by ID
 
