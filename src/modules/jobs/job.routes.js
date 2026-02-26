@@ -27,6 +27,11 @@ router.get('/', jobValidation.getJobsValidation, validate, jobController.getAllJ
 router.get('/nearby', jobValidation.getNearbyJobsValidation, validate, jobController.getNearbyJobs);
 
 /**
+ * Get recommended jobs based on user skills
+ */
+router.get('/recommendations', protect, jobController.getRecommendedJobs);
+
+/**
  * Get single job by ID
  */
 router.get('/:id', jobValidation.getJobValidation, validate, jobController.getJobById);

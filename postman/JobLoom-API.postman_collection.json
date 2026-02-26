@@ -112,7 +112,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"email\": \"john.doe@example.com\",\n  \"password\": \"SecurePass123!\",\n  \"role\": \"job_seeker\",\n  \"phone\": \"+94771234567\"\n}"
+              "raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"email\": \"john.doe@example.com\",\n  \"password\": \"SecurePass123!\",\n  \"role\": \"job_seeker\",\n  \"phone\": \"+94771234567\",\n  \"location\": {\n    \"village\": \"Galle Face\",\n    \"district\": \"Colombo\",\n    \"province\": \"Western\"\n  }\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/users/register",
@@ -120,6 +120,28 @@
               "path": ["users", "register"]
             },
             "description": "Register a new user account.\n\n**Roles:**\n- `job_seeker` - Looking for jobs\n- `employer` - Posting jobs\n- `admin` - Platform administrator\n\n**Password Requirements:**\n- Minimum 8 characters\n- At least one uppercase, lowercase, number\n\n**Returns:** User object and JWT token"
+          }
+        },
+        {
+          "name": "Verify Registration",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+94771234567\",\n  \"otp\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/verify-registration",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "verify-registration"]
+            },
+            "description": "Verify user registration with OTP sent via SMS."
           }
         },
         {
@@ -159,14 +181,85 @@
           }
         },
         {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+94771234567\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/forgot-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "forgot-password"]
+            },
+            "description": "Send password reset OTP to user's phone."
+          }
+        },
+        {
+          "name": "Verify Password Reset",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+94771234567\",\n  \"otp\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/verify-password-reset",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "verify-password-reset"]
+            },
+            "description": "Verify password reset OTP and receive a reset token."
+          }
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+94771234567\",\n  \"resetToken\": \"your_reset_token\",\n  \"password\": \"NewSecurePass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/reset-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "reset-password"]
+            },
+            "description": "Reset user password using the reset token."
+          }
+        },
+        {
           "name": "Get User by ID",
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
-              "raw": "{{baseUrl}}/users/:id",
+              "raw": "{{baseUrl}}/users/profile/:id",
               "host": ["{{baseUrl}}"],
-              "path": ["users", ":id"],
+              "path": ["users", "profile", ":id"],
               "variable": [
                 {
                   "key": "id",
@@ -174,7 +267,7 @@
                 }
               ]
             },
-            "description": "Get public user profile by user ID.\n\n**Public Information:**\n- Name, email, role\n- Rating statistics\n- Badge information\n- Review counts"
+            "description": "Get user profile by user ID.\n\n**Requires:** JWT token"
           }
         },
         {
@@ -203,22 +296,83 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
               }
             ],
             "body": {
-              "mode": "raw",
-              "raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phone\": \"+94771234567\",\n  \"bio\": \"Experienced farm worker\"\n}"
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "firstName",
+                  "value": "John",
+                  "type": "text"
+                },
+                {
+                  "key": "lastName",
+                  "value": "Doe",
+                  "type": "text"
+                },
+                {
+                  "key": "phone",
+                  "value": "+94771234567",
+                  "type": "text"
+                },
+                {
+                  "key": "cv",
+                  "description": "Upload one or more CVs",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "profileImage",
+                  "description": "Upload profile image",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "skills",
+                  "value": "[\"Farming\", \"Driving\"]",
+                  "type": "text"
+                },
+                {
+                  "key": "experience",
+                  "value": "[{\"title\": \"Farm Worker\", \"company\": \"Green Acres\", \"duration\": \"2 years\"}]",
+                  "type": "text"
+                },
+                {
+                  "key": "location",
+                  "value": "{\"village\": \"Updated Village\", \"district\": \"Colombo\", \"province\": \"Western\"}",
+                  "type": "text"
+                }
+              ]
             },
             "url": {
               "raw": "{{baseUrl}}/users/profile",
               "host": ["{{baseUrl}}"],
               "path": ["users", "profile"]
             },
-            "description": "Update authenticated user's profile.\n\n**Requires:** JWT token\n\n**Updatable Fields:**\n- firstName, lastName\n- phone, bio\n- Cannot change: email, role, password (use separate endpoints)"
+            "description": "Update authenticated user's profile with multiple CVs, skills, experience, and location.\n\n**Requires:** JWT token\n\n**Fields:**\n- `firstName`, `lastName`, `phone`\n- `cv` (file field, supports up to 5 files)\n- `profileImage` (file field)\n- `skills` (JSON string array, e.g. `[\"skill1\", \"skill2\"]`)\n- `experience` (JSON string array of objects, e.g. `[{\"title\": \"...\", \"company\": \"...\"}]`)\n- `location` (JSON string object, e.g. `{\"village\": \"...\", \"district\": \"...\"}`)"
+          }
+        },
+        {
+          "name": "Delete Account",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password\": \"SecurePass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/account",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "account"]
+            },
+            "description": "Deactivate authenticated user's account."
           }
         }
       ],
@@ -513,6 +667,24 @@
               ]
             },
             "description": "Get a single job listing by ID.\n\n**Returns:** Complete job details with employer information"
+          }
+        },
+        {
+          "name": "Get Recommended Jobs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/jobs/recommendations",
+              "host": ["{{baseUrl}}"],
+              "path": ["jobs", "recommendations"]
+            },
+            "description": "Get job recommendations for the authenticated user based on their skills."
           }
         },
         {

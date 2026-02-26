@@ -33,7 +33,7 @@ router.put(
   '/profile',
   protect,
   upload.fields([
-    { name: 'cv', maxCount: 1 },
+    { name: 'cv', maxCount: 5 },
     { name: 'profileImage', maxCount: 1 },
   ]),
   updateProfileValidation,

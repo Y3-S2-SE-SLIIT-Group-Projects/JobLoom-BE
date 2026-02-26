@@ -45,6 +45,17 @@ export const getNearbyJobs = async (req, res) => {
 };
 
 /**
+ * @route   GET /api/jobs/recommendations
+ * @desc    Get recommended jobs for the current user
+ * @access  Private
+ */
+export const getRecommendedJobs = async (req, res) => {
+  const jobs = await jobService.getRecommendedJobs(req.user);
+
+  sendSuccess(res, `Found ${jobs.length} recommendations for you`, { jobs });
+};
+
+/**
  * @route   GET /api/jobs/employer/my-jobs
  * @desc    Get jobs created by employer
  * @access  Private (Employer only)
@@ -154,6 +165,7 @@ export default {
   getEmployerStats,
   getJobById,
   updateJob,
+  getRecommendedJobs,
   closeJob,
   markJobAsFilled,
   deleteJob,

@@ -156,8 +156,38 @@ export const updateUserProfile = async (req, res) => {
   // Handle file uploads if present
   const updates = { ...req.body };
   if (req.files) {
-    if (req.files.cv) updates.cv = req.files.cv[0].path;
+    if (req.files.cv) {
+      updates.newCVs = req.files.cv.map((file) => ({
+        name: file.originalname || 'CV',
+        url: file.path,
+      }));
+    }
     if (req.files.profileImage) updates.profileImage = req.files.profileImage[0].path;
+  }
+
+  // Parse JSON strings if they are sent as strings (common with formdata)
+  if (typeof updates.skills === 'string') {
+    try {
+      updates.skills = JSON.parse(updates.skills);
+    } catch {
+      // Ignore parse error, use as is or handle
+    }
+  }
+
+  if (typeof updates.experience === 'string') {
+    try {
+      updates.experience = JSON.parse(updates.experience);
+    } catch {
+      // Ignore parse error
+    }
+  }
+
+  if (typeof updates.location === 'string') {
+    try {
+      updates.location = JSON.parse(updates.location);
+    } catch {
+      // Ignore parse error
+    }
   }
 
   try {
