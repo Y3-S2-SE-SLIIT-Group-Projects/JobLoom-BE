@@ -54,6 +54,18 @@ const makeApplication = (overrides = {}) => {
 // ── Module-level mocks ───────────────────────────────────────────────
 // We must use unstable_mockModule because the project is ESM.
 
+/**
+ * Wraps a value in a thenable chain that supports .active().
+ * Used because the service chains .active() on findById/find/countDocuments.
+ */
+const withActiveChain = (value) => {
+  const chain = {};
+  chain.active = jest.fn().mockReturnValue(chain);
+  chain.then = (resolve, reject) => Promise.resolve(value).then(resolve, reject);
+  chain.catch = (fn) => Promise.resolve(value).catch(fn);
+  return chain;
+};
+
 const mockApplicationModel = {
   create: jest.fn(),
   findById: jest.fn(),
@@ -61,6 +73,31 @@ const mockApplicationModel = {
   findOne: jest.fn(),
   countDocuments: jest.fn(),
   aggregate: jest.fn(),
+};
+
+// Wrap findById so mockResolvedValue returns a chain with .active()
+const findByIdFn = mockApplicationModel.findById;
+findByIdFn.mockResolvedValue = function (value) {
+  findByIdFn.mockImplementation(() => withActiveChain(value));
+};
+
+// Wrap find so mockReturnValue returns a chain with .active() in the fluent API
+const findFn = mockApplicationModel.find;
+findFn.mockImplementation((_query) => {
+  const baseChain = {
+    active: jest.fn().mockReturnValue(baseChain),
+    populate: jest.fn().mockReturnValue(baseChain),
+    sort: jest.fn().mockReturnValue(baseChain),
+    skip: jest.fn().mockReturnValue(baseChain),
+    limit: jest.fn().mockResolvedValue([]),
+  };
+  return baseChain;
+});
+
+// Wrap countDocuments so mockResolvedValue returns a chain with .active()
+const countDocumentsFn = mockApplicationModel.countDocuments;
+countDocumentsFn.mockResolvedValue = function (value) {
+  countDocumentsFn.mockImplementation(() => withActiveChain(value));
 };
 
 const mockJobModel = {
@@ -78,10 +115,13 @@ jest.unstable_mockModule('../../src/modules/jobs/job.model.js', () => ({
 // Import service AFTER mocks are registered
 const {
   applyForJob,
+  getApplicationById,
   getMyApplications,
   getJobApplications,
   updateApplicationStatus,
   withdrawApplication,
+  getApplicationStats,
+  checkApplicationEligibility,
 } = await import('../../src/modules/applications/application.service.js');
 
 // ── Test suites ──────────────────────────────────────────────────────
@@ -295,8 +335,9 @@ describe('Application Service — Unit Tests', () => {
     test('should return paginated applications with defaults', async () => {
       const apps = [makeApplication(), makeApplication({ _id: oid() })];
 
-      // Build a fluent query chain mock
+      // Build a fluent query chain mock (service chains .active() first)
       const chainMock = {
+        active: jest.fn().mockReturnThis(),
         populate: jest.fn().mockReturnThis(),
         sort: jest.fn().mockReturnThis(),
         skip: jest.fn().mockReturnThis(),
@@ -309,7 +350,7 @@ describe('Application Service — Unit Tests', () => {
       const result = await getMyApplications(seekerId);
 
       expect(mockApplicationModel.find).toHaveBeenCalledWith(
-        expect.objectContaining({ jobSeekerId: seekerId, isActive: true })
+        expect.objectContaining({ jobSeekerId: seekerId })
       );
       expect(chainMock.skip).toHaveBeenCalledWith(0); // page 1
       expect(chainMock.limit).toHaveBeenCalledWith(20); // default limit
@@ -324,6 +365,7 @@ describe('Application Service — Unit Tests', () => {
 
     test('should apply status filter when provided', async () => {
       const chainMock = {
+        active: jest.fn().mockReturnThis(),
         populate: jest.fn().mockReturnThis(),
         sort: jest.fn().mockReturnThis(),
         skip: jest.fn().mockReturnThis(),
@@ -344,6 +386,7 @@ describe('Application Service — Unit Tests', () => {
 
     test('should calculate correct number of pages', async () => {
       const chainMock = {
+        active: jest.fn().mockReturnThis(),
         populate: jest.fn().mockReturnThis(),
         sort: jest.fn().mockReturnThis(),
         skip: jest.fn().mockReturnThis(),
@@ -368,6 +411,7 @@ describe('Application Service — Unit Tests', () => {
 
       const apps = [makeApplication()];
       const chainMock = {
+        active: jest.fn().mockReturnThis(),
         populate: jest.fn().mockReturnThis(),
         sort: jest.fn().mockReturnThis(),
         skip: jest.fn().mockReturnThis(),
@@ -401,6 +445,184 @@ describe('Application Service — Unit Tests', () => {
         statusCode: 404,
         message: 'Job not found',
       });
+    });
+  });
+
+  // ────────────────────────────────────────────────────────────────────
+  // getApplicationById
+  // ────────────────────────────────────────────────────────────────────
+  describe('getApplicationById', () => {
+    /**
+     * Build a thenable Mongoose query chain so that
+     * Application.findById(...).active().populate(...).populate(...).populate(...)
+     * resolves to `result` when awaited.
+     */
+    const makeQueryChain = (result) => {
+      const chain = {};
+      chain.active = jest.fn().mockReturnValue(chain);
+      chain.populate = jest.fn().mockReturnValue(chain);
+      chain.then = (resolve, reject) => Promise.resolve(result).then(resolve, reject);
+      chain.catch = (fn) => Promise.resolve(result).catch(fn);
+      return chain;
+    };
+
+    /** Populated application with both private fields present */
+    const makePopulatedApp = (overrides = {}) => ({
+      _id: applicationId,
+      jobSeekerId: { _id: seekerId },
+      employerId: { _id: employerId },
+      status: 'pending',
+      isActive: true,
+      employerNotes: 'Strong candidate',
+      notes: 'Ask about remote work',
+      toObject: jest.fn().mockReturnValue({
+        _id: applicationId,
+        status: 'pending',
+        isActive: true,
+        employerNotes: 'Strong candidate',
+        notes: 'Ask about remote work',
+      }),
+      ...overrides,
+    });
+
+    test('should return application with employerNotes stripped for job seeker', async () => {
+      const app = makePopulatedApp();
+      mockApplicationModel.findById.mockReturnValue(makeQueryChain(app));
+
+      const result = await getApplicationById(applicationId, seekerId, 'jobseeker');
+
+      expect(result).not.toHaveProperty('employerNotes');
+      expect(result).toHaveProperty('notes', 'Ask about remote work');
+    });
+
+    test('should return application with notes stripped for employer', async () => {
+      const app = makePopulatedApp();
+      mockApplicationModel.findById.mockReturnValue(makeQueryChain(app));
+
+      const result = await getApplicationById(applicationId, employerId, 'employer');
+
+      expect(result).not.toHaveProperty('notes');
+      expect(result).toHaveProperty('employerNotes', 'Strong candidate');
+    });
+
+    test('should return the full document for an admin without stripping either field', async () => {
+      const app = makePopulatedApp();
+      mockApplicationModel.findById.mockReturnValue(makeQueryChain(app));
+
+      const result = await getApplicationById(applicationId, oid(), 'admin');
+
+      // Admin receives the raw Mongoose document, not a plain object
+      expect(result).toBe(app);
+    });
+
+    test('should throw 403 when requester is unrelated to the application', async () => {
+      const app = makePopulatedApp();
+      mockApplicationModel.findById.mockReturnValue(makeQueryChain(app));
+
+      await expect(getApplicationById(applicationId, oid(), 'jobseeker')).rejects.toMatchObject({
+        statusCode: 403,
+        message: 'You are not authorized to view this application',
+      });
+    });
+
+    test('should throw 404 when application does not exist', async () => {
+      mockApplicationModel.findById.mockReturnValue(makeQueryChain(null));
+
+      await expect(getApplicationById(applicationId, seekerId, 'jobseeker')).rejects.toMatchObject({
+        statusCode: 404,
+      });
+    });
+  });
+
+  // ────────────────────────────────────────────────────────────────────
+  // getApplicationStats
+  // ────────────────────────────────────────────────────────────────────
+  describe('getApplicationStats', () => {
+    test('should return correct per-status counts and total', async () => {
+      mockJobModel.findById.mockResolvedValue(makeJob());
+      mockApplicationModel.aggregate.mockResolvedValue([
+        { _id: 'pending', count: 5 },
+        { _id: 'reviewed', count: 2 },
+        { _id: 'shortlisted', count: 1 },
+      ]);
+
+      const result = await getApplicationStats(jobId, employerId);
+
+      expect(result.pending).toBe(5);
+      expect(result.reviewed).toBe(2);
+      expect(result.shortlisted).toBe(1);
+      expect(result.accepted).toBe(0);
+      expect(result.rejected).toBe(0);
+      expect(result.withdrawn).toBe(0);
+      expect(result.total).toBe(8);
+    });
+
+    test('should return all zeros when no applications exist', async () => {
+      mockJobModel.findById.mockResolvedValue(makeJob());
+      mockApplicationModel.aggregate.mockResolvedValue([]);
+
+      const result = await getApplicationStats(jobId, employerId);
+
+      expect(result.total).toBe(0);
+      expect(result.pending).toBe(0);
+      expect(result.accepted).toBe(0);
+    });
+
+    test('should throw 404 when job does not exist', async () => {
+      mockJobModel.findById.mockResolvedValue(null);
+
+      await expect(getApplicationStats(oid(), employerId)).rejects.toMatchObject({
+        statusCode: 404,
+        message: 'Job not found',
+      });
+    });
+
+    test('should throw 403 when requester does not own the job', async () => {
+      mockJobModel.findById.mockResolvedValue(makeJob());
+
+      await expect(getApplicationStats(jobId, oid())).rejects.toMatchObject({
+        statusCode: 403,
+        message: 'You are not authorized to view stats for this job',
+      });
+    });
+  });
+
+  // ────────────────────────────────────────────────────────────────────
+  // checkApplicationEligibility
+  // ────────────────────────────────────────────────────────────────────
+  describe('checkApplicationEligibility', () => {
+    test('should return hasAcceptedApplication true when an accepted application exists', async () => {
+      const app = makeApplication({ status: 'accepted' });
+      mockApplicationModel.findOne.mockResolvedValue(app);
+
+      const result = await checkApplicationEligibility(jobId, seekerId);
+
+      expect(result.hasAcceptedApplication).toBe(true);
+      expect(result.application).toBe(app);
+    });
+
+    test('should return hasAcceptedApplication false when no accepted application exists', async () => {
+      mockApplicationModel.findOne.mockResolvedValue(null);
+
+      const result = await checkApplicationEligibility(jobId, seekerId);
+
+      expect(result.hasAcceptedApplication).toBe(false);
+      expect(result.application).toBeNull();
+    });
+
+    test('should query using both jobSeekerId and employerId via $or', async () => {
+      const userId = oid();
+      mockApplicationModel.findOne.mockResolvedValue(null);
+
+      await checkApplicationEligibility(jobId, userId);
+
+      expect(mockApplicationModel.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({
+          jobId,
+          status: 'accepted',
+          $or: expect.arrayContaining([{ jobSeekerId: userId }, { employerId: userId }]),
+        })
+      );
     });
   });
 });

@@ -23,8 +23,11 @@ import {
  * @returns {boolean} Can user review
  */
 export const canUserReview = async (reviewerId, revieweeId, jobId) => {
-  // Check if there's an accepted application involving both users for this job
-  return await applicationService.hasAcceptedApplication(reviewerId, revieweeId, jobId);
+  const { hasAcceptedApplication } = await applicationService.checkApplicationEligibility(
+    jobId,
+    reviewerId
+  );
+  return hasAcceptedApplication;
 };
 
 /**

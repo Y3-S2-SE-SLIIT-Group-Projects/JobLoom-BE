@@ -22,6 +22,10 @@ import { errorHandler, notFoundHandler } from './middleware/error-handler.js';
 import healthRoutes from './routes/health.routes.js';
 import routes from './routes/index.js';
 
+// Import Swagger
+import swaggerUi from 'swagger-ui-express';
+import swaggerSpec from './swagger/swagger.config.js';
+
 // Constants
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -43,6 +47,11 @@ configureCorsMiddleware(app);
 configureBodyParser(app);
 configureRequestLogger(app);
 app.use(httpInterceptor);
+
+/**
+ * Configure API Documentation
+ */
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, { explorer: true }));
 
 /**
  * Configure Routes
@@ -131,7 +140,7 @@ const startServer = async () => {
       });
       logger.info(`API available at ${serverUrl}`);
       logger.info(`Health check: ${serverUrl}/health`);
-      logger.info(`API documentation: ${serverUrl}/`);
+      logger.info(`API documentation: ${serverUrl}/api-docs`);
     });
 
     // Configure server timeouts
