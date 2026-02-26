@@ -101,9 +101,7 @@ export const getReviewValidation = [param('id').isMongoId().withMessage('Invalid
 
 export const deleteReviewValidation = [param('id').isMongoId().withMessage('Invalid review ID')];
 
-export const getUserReviewsValidation = [
-  param('userId').isMongoId().withMessage('Invalid user ID'),
-
+const reviewListQueryValidation = [
   query('reviewerType')
     .optional()
     .isIn(['job_seeker', 'employer'])
@@ -115,6 +113,21 @@ export const getUserReviewsValidation = [
     .optional()
     .isInt({ min: 1, max: 100 })
     .withMessage('Limit must be between 1 and 100'),
+];
+
+export const getUserReviewsValidation = [
+  param('userId').isMongoId().withMessage('Invalid user ID'),
+  ...reviewListQueryValidation,
+];
+
+export const getEmployerReviewsValidation = [
+  param('employerId').isMongoId().withMessage('Invalid employer ID'),
+  ...reviewListQueryValidation,
+];
+
+export const getJobSeekerReviewsValidation = [
+  param('jobSeekerId').isMongoId().withMessage('Invalid job seeker ID'),
+  ...reviewListQueryValidation,
 ];
 
 export const getJobReviewsValidation = [param('jobId').isMongoId().withMessage('Invalid job ID')];
@@ -139,6 +152,8 @@ export default {
   getReviewValidation,
   deleteReviewValidation,
   getUserReviewsValidation,
+  getEmployerReviewsValidation,
+  getJobSeekerReviewsValidation,
   getJobReviewsValidation,
   getUserStatsValidation,
   reportReviewValidation,

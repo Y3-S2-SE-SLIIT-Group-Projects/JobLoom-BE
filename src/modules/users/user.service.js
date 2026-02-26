@@ -1,6 +1,8 @@
 import User from './user.model.js';
 import jwt from 'jsonwebtoken';
 import envConfig from '../../config/env.config.js';
+import * as smsService from '../../services/sms.service.js';
+import crypto from 'crypto';
 
 const generateToken = (id) => {
   return jwt.sign({ id }, envConfig.jwtSecret, {
@@ -8,13 +10,8 @@ const generateToken = (id) => {
   });
 };
 
-/**
- * Register a new user
- * @param {Object} userData
- * @returns {Object} { user, token }
- */
 export const registerUser = async (userData) => {
-  const { email } = userData;
+  const { email, phone } = userData;
 
   const userExists = await User.findOne({ email });
 
@@ -22,20 +19,145 @@ export const registerUser = async (userData) => {
     throw new Error('User already exists');
   }
 
-  const user = await User.create(userData);
+  // Generate OTP
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+  const user = await User.create({
+    ...userData,
+    verificationOtp: otp,
+    verificationOtpExpires: otpExpires,
+    isVerified: false,
+  });
 
   if (user) {
+    // Send SMS
+    try {
+      await smsService.sendOtp(phone, otp);
+    } catch (error) {
+      console.error('Failed to send verification SMS:', error);
+      // We don't throw here to allow the user to retry sending OTP
+    }
+
     return {
       _id: user._id,
       firstName: user.firstName,
       lastName: user.lastName,
       email: user.email,
       role: user.role,
-      token: generateToken(user._id),
+      isVerified: user.isVerified,
     };
   } else {
     throw new Error('Invalid user data');
   }
+};
+
+/**
+ * Verify user registration OTP
+ * @param {string} phone
+ * @param {string} otp
+ * @returns {Object} { user, token }
+ */
+export const verifyRegistration = async (phone, otp) => {
+  const user = await User.findOne({
+    phone,
+    verificationOtp: otp,
+    verificationOtpExpires: { $gt: Date.now() },
+  });
+
+  if (!user) {
+    throw new Error('Invalid or expired OTP');
+  }
+
+  user.isVerified = true;
+  user.verificationOtp = null;
+  user.verificationOtpExpires = null;
+  await user.save();
+
+  return {
+    _id: user._id,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    email: user.email,
+    role: user.role,
+    token: generateToken(user._id),
+  };
+};
+
+/**
+ * Handle forgot password - Send OTP
+ * @param {string} phone
+ */
+export const forgotPassword = async (phone) => {
+  const user = await User.findOne({ phone });
+
+  if (!user) {
+    throw new Error('User not found with this phone number');
+  }
+
+  // Generate OTP
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+  user.passwordResetOtp = otp;
+  user.passwordResetOtpExpires = otpExpires;
+  await user.save();
+
+  // Send SMS
+  await smsService.sendOtp(phone, otp);
+
+  return { message: 'OTP sent to your phone' };
+};
+
+/**
+ * Verify password reset OTP
+ * @param {string} phone
+ * @param {string} otp
+ * @returns {Object} { message, resetToken }
+ */
+export const verifyPasswordReset = async (phone, otp) => {
+  const user = await User.findOne({
+    phone,
+    passwordResetOtp: otp,
+    passwordResetOtpExpires: { $gt: Date.now() },
+  });
+
+  if (!user) {
+    throw new Error('Invalid or expired OTP');
+  }
+
+  // Generate a temporary reset token to pass to the reset password step
+  const resetToken = crypto.randomBytes(20).toString('hex');
+  user.passwordResetOtp = resetToken; // Reuse this field or add a new one, let's reuse for simplicity in this flow
+  // user.passwordResetOtpExpires remains the same or we could extend it
+  await user.save();
+
+  return { message: 'OTP verified', resetToken };
+};
+
+/**
+ * Reset password
+ * @param {string} phone
+ * @param {string} resetToken
+ * @param {string} newPassword
+ */
+export const resetPassword = async (phone, resetToken, newPassword) => {
+  const user = await User.findOne({
+    phone,
+    passwordResetOtp: resetToken,
+    passwordResetOtpExpires: { $gt: Date.now() },
+  });
+
+  if (!user) {
+    throw new Error('Invalid or expired reset token');
+  }
+
+  user.password = newPassword;
+  user.passwordResetOtp = null;
+  user.passwordResetOtpExpires = null;
+  await user.save();
+
+  return { message: 'Password reset successful' };
 };
 
 /**
@@ -136,8 +258,12 @@ export const deleteUser = async (id, password) => {
 
 export default {
   registerUser,
+  verifyRegistration,
   loginUser,
   getUserProfile,
   updateUserProfile,
   deleteUser,
+  forgotPassword,
+  verifyPasswordReset,
+  resetPassword,
 };

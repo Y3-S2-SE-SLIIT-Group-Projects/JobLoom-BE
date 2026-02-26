@@ -6,6 +6,7 @@ import User from '../../src/modules/users/user.model.js';
 import Job from '../../src/modules/jobs/job.model.js';
 import Application from '../../src/modules/applications/application.model.js';
 import Review from '../../src/modules/reviews/review.model.js';
+import RatingStats from '../../src/modules/reviews/rating-stats.model.js';
 
 /**
  * Integration Tests for Review Routes
@@ -38,6 +39,7 @@ describe('Review Routes - Integration Tests', () => {
     await Job.deleteMany({});
     await Application.deleteMany({});
     await Review.deleteMany({});
+    await RatingStats.deleteMany({});
     await mongoose.connection.close();
   });
 
@@ -48,6 +50,7 @@ describe('Review Routes - Integration Tests', () => {
     await Job.deleteMany({});
     await Application.deleteMany({});
     await Review.deleteMany({});
+    await RatingStats.deleteMany({});
 
     // Register employer
     const employerRes = await request(app).post('/api/users/register').send({
@@ -346,11 +349,9 @@ describe('Review Routes - Integration Tests', () => {
         },
       ]);
 
-      // Update user stats (normally done by hooks)
-      await User.findByIdAndUpdate(employerId, {
-        'ratingStats.averageRating': 4.5,
-        'ratingStats.totalReviews': 2,
-      });
+      // Stats are auto-updated by post-save hooks via RatingStats collection.
+      // Allow hooks to complete before querying.
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
       const res = await request(app).get(`/api/reviews/stats/${employerId}`);
 

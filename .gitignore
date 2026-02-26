@@ -146,5 +146,6 @@ vite.config.ts.timestamp-*
 
 # Project specific
 .DS_Store
+uploads/
 
 Requirement.md
