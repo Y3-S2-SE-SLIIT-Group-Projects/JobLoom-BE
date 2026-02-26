@@ -21,6 +21,78 @@ export const registerUser = async (req, res) => {
 };
 
 /**
+ * @desc    Verify user registration OTP
+ * @route   POST /api/users/verify-registration
+ * @access  Public
+ */
+export const verifyRegistration = async (req, res) => {
+  try {
+    const { phone, otp } = req.body;
+    if (!phone || !otp) {
+      return res.status(400).json({ message: 'Phone and OTP are required' });
+    }
+    const result = await userService.verifyRegistration(phone, otp);
+    res.json(result);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+/**
+ * @desc    Forgot password - Send OTP
+ * @route   POST /api/users/forgot-password
+ * @access  Public
+ */
+export const forgotPassword = async (req, res) => {
+  try {
+    const { phone } = req.body;
+    if (!phone) {
+      return res.status(400).json({ message: 'Phone number is required' });
+    }
+    const result = await userService.forgotPassword(phone);
+    res.json(result);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+/**
+ * @desc    Verify password reset OTP
+ * @route   POST /api/users/verify-password-reset
+ * @access  Public
+ */
+export const verifyPasswordReset = async (req, res) => {
+  try {
+    const { phone, otp } = req.body;
+    if (!phone || !otp) {
+      return res.status(400).json({ message: 'Phone and OTP are required' });
+    }
+    const result = await userService.verifyPasswordReset(phone, otp);
+    res.json(result);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+/**
+ * @desc    Reset password
+ * @route   POST /api/users/reset-password
+ * @access  Public
+ */
+export const resetPassword = async (req, res) => {
+  try {
+    const { phone, resetToken, password } = req.body;
+    if (!phone || !resetToken || !password) {
+      return res.status(400).json({ message: 'Phone, resetToken, and password are required' });
+    }
+    const result = await userService.resetPassword(phone, resetToken, password);
+    res.json(result);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+/**
  * @desc    Auth user & get token
  * @route   POST /api/users/login
  * @access  Public
@@ -116,9 +188,13 @@ export const deleteUser = async (req, res) => {
 
 export default {
   registerUser,
+  verifyRegistration,
   loginUser,
   getUserProfile,
   getMyProfile,
   updateUserProfile,
   deleteUser,
+  forgotPassword,
+  verifyPasswordReset,
+  resetPassword,
 };
