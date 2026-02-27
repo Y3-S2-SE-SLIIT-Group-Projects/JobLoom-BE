@@ -1,0 +1,616 @@
+{
+  "info": {
+    "name": "JobLoom API",
+    "description": "Complete API documentation for JobLoom Backend - A rural employment platform with comprehensive review and rating system.\n\n## Features\n- User Management (Registration, Login, Profile)\n- Job Listings\n- Applications\n- Review & Rating System with Trust Scores\n- Health Check Endpoints\n\n## Authentication\nMost endpoints require JWT Bearer token authentication. Register/Login to get a token.\n\n## Base URL\n`http://localhost:3000/api`\n\n## Environment Variables\n- `{{baseUrl}}` - API base URL (default: http://localhost:3000/api)\n- `{{token}}` - JWT authentication token",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health & Status",
+      "item": [
+        {
+          "name": "API Root",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": [""]
+            },
+            "description": "Get API information and available endpoints"
+          }
+        },
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/health",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["health"]
+            },
+            "description": "Comprehensive health check with database, memory, and system info"
+          }
+        },
+        {
+          "name": "Liveness Probe",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/healthz",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["healthz"]
+            },
+            "description": "Kubernetes liveness probe - checks if server is running"
+          }
+        },
+        {
+          "name": "Readiness Probe",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/ready",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["ready"]
+            },
+            "description": "Kubernetes readiness probe - checks if server can handle requests"
+          }
+        }
+      ],
+      "description": "Health check and monitoring endpoints"
+    },
+    {
+      "name": "Authentication & Users",
+      "item": [
+        {
+          "name": "Register User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.environment.set('token', jsonData.data.token);",
+                  "    pm.environment.set('userId', jsonData.data.user._id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"email\": \"john.doe@example.com\",\n  \"password\": \"SecurePass123!\",\n  \"role\": \"job_seeker\",\n  \"phone\": \"+94771234567\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "register"]
+            },
+            "description": "Register a new user account.\n\n**Roles:**\n- `job_seeker` - Looking for jobs\n- `employer` - Posting jobs\n- `admin` - Platform administrator\n\n**Password Requirements:**\n- Minimum 8 characters\n- At least one uppercase, lowercase, number\n\n**Returns:** User object and JWT token"
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.environment.set('token', jsonData.data.token);",
+                  "    pm.environment.set('userId', jsonData.data.user._id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john.doe@example.com\",\n  \"password\": \"SecurePass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "login"]
+            },
+            "description": "Authenticate user and receive JWT token.\n\n**Returns:** User object and JWT token (valid for 7 days)"
+          }
+        },
+        {
+          "name": "Get User by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{userId}}"
+                }
+              ]
+            },
+            "description": "Get public user profile by user ID.\n\n**Public Information:**\n- Name, email, role\n- Rating statistics\n- Badge information\n- Review counts"
+          }
+        },
+        {
+          "name": "Get My Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "me"]
+            },
+            "description": "Get authenticated user's profile.\n\n**Requires:** JWT token\n\n**Returns:** Complete user profile including private fields"
+          }
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phone\": \"+94771234567\",\n  \"bio\": \"Experienced farm worker\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "profile"]
+            },
+            "description": "Update authenticated user's profile.\n\n**Requires:** JWT token\n\n**Updatable Fields:**\n- firstName, lastName\n- phone, bio\n- Cannot change: email, role, password (use separate endpoints)"
+          }
+        }
+      ],
+      "description": "User registration, authentication, and profile management"
+    },
+    {
+      "name": "Reviews & Ratings",
+      "item": [
+        {
+          "name": "Create Review",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.environment.set('reviewId', jsonData.data.review._id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"revieweeId\": \"675c9d4c8e9a1b2c3d4e5f67\",\n  \"jobId\": \"675c9d4c8e9a1b2c3d4e5f68\",\n  \"reviewerType\": \"job_seeker\",\n  \"rating\": 5,\n  \"comment\": \"Excellent employer! Paid on time and good working conditions.\",\n  \"workQuality\": 5,\n  \"communication\": 5,\n  \"punctuality\": 5,\n  \"paymentOnTime\": 5\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reviews",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews"]
+            },
+            "description": "Create a new review for an employer or job seeker.\n\n**Requires:** JWT token + Accepted application\n\n**Reviewer Types:**\n- `job_seeker` - Review employer\n- `employer` - Review job seeker\n\n**Rating Criteria (1-5):**\n- `workQuality` - Quality of work\n- `communication` - Communication skills\n- `punctuality` - Timeliness\n- `paymentOnTime` - Payment punctuality (for employers)\n\n**Validation:**\n- Must have worked together (accepted application)\n- Cannot review yourself\n- One review per job per person\n- Can only review within job context"
+          }
+        },
+        {
+          "name": "Get Review by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reviews/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{reviewId}}"
+                }
+              ]
+            },
+            "description": "Get a single review by its ID.\n\n**Returns:** Complete review with populated user and job data"
+          }
+        },
+        {
+          "name": "Get User Reviews",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reviews/user/:userId?page=1&limit=10&reviewerType=job_seeker&sort=-createdAt",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", "user", ":userId"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number"
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": "Results per page"
+                },
+                {
+                  "key": "reviewerType",
+                  "value": "job_seeker",
+                  "description": "Filter by reviewer type"
+                },
+                {
+                  "key": "sort",
+                  "value": "-createdAt",
+                  "description": "Sort field (- for desc)"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "userId",
+                  "value": "{{userId}}"
+                }
+              ]
+            },
+            "description": "Get all reviews for a specific user.\n\n**Query Parameters:**\n- `page` - Page number (default: 1)\n- `limit` - Results per page (default: 10)\n- `reviewerType` - Filter by type (job_seeker/employer)\n- `sort` - Sort by field (e.g., -createdAt for newest first)\n\n**Returns:** Paginated review list with metadata"
+          }
+        },
+        {
+          "name": "Get Job Reviews",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reviews/job/:jobId",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", "job", ":jobId"],
+              "variable": [
+                {
+                  "key": "jobId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Get all reviews related to a specific job.\n\n**Returns:** Reviews from both employers and job seekers for this job"
+          }
+        },
+        {
+          "name": "Get User Rating Statistics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reviews/stats/:userId",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", "stats", ":userId"],
+              "variable": [
+                {
+                  "key": "userId",
+                  "value": "{{userId}}"
+                }
+              ]
+            },
+            "description": "Get comprehensive rating statistics for a user.\n\n**Returns:**\n- Average rating (weighted)\n- Total reviews\n- Rating distribution\n- Trust score (0-100)\n- Badge (Elite, Top Rated, Trusted, Rising Star)\n- Criteria breakdown (work quality, communication, etc.)\n- Rating level (Excellent, Very Good, etc.)\n\n**Trust Score Algorithm:**\n- Based on average rating, review count, and completeness\n- Range: 0-100\n- Factors: consistency, volume, detail\n\n**Badges:**\n- **Elite**: 4.8+ rating, 20+ reviews\n- **Top Rated**: 4.5+ rating, 10+ reviews\n- **Trusted**: 4.0+ rating, 5+ reviews\n- **Rising Star**: 4.0+ rating, 2-4 reviews"
+          }
+        },
+        {
+          "name": "Get Employer Reviews",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reviews/employer/:employerId",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", "employer", ":employerId"],
+              "variable": [
+                {
+                  "key": "employerId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Get all reviews for an employer (alias for user reviews)."
+          }
+        },
+        {
+          "name": "Get Job Seeker Reviews",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reviews/jobseeker/:jobSeekerId",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", "jobseeker", ":jobSeekerId"],
+              "variable": [
+                {
+                  "key": "jobSeekerId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Get all reviews for a job seeker (alias for user reviews)."
+          }
+        },
+        {
+          "name": "Update Review",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 4,\n  \"comment\": \"Updated review: Good experience overall.\",\n  \"workQuality\": 4,\n  \"communication\": 4,\n  \"punctuality\": 5\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reviews/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{reviewId}}"
+                }
+              ]
+            },
+            "description": "Update your own review.\n\n**Requires:** JWT token + Review ownership\n\n**Restrictions:**\n- Can only update own reviews\n- Can only update within 7 days of creation\n- Cannot change reviewee or job\n\n**Updatable Fields:**\n- rating, comment\n- workQuality, communication, punctuality, paymentOnTime"
+          }
+        },
+        {
+          "name": "Delete Review",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reviews/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{reviewId}}"
+                }
+              ]
+            },
+            "description": "Delete (soft delete) your own review.\n\n**Requires:** JWT token + Review ownership\n\n**Note:** This is a soft delete - review is marked as deleted but data is retained for moderation."
+          }
+        },
+        {
+          "name": "Report Review",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"This review contains false information and inappropriate language.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reviews/:id/report",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", ":id", "report"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{reviewId}}"
+                }
+              ]
+            },
+            "description": "Report a review for moderation.\n\n**Requires:** JWT token\n\n**Reasons for Reporting:**\n- False information\n- Inappropriate language\n- Personal attacks\n- Spam or abuse\n\n**Restrictions:**\n- Cannot report own reviews\n- One report per user per review\n- Reports are reviewed by moderators"
+          }
+        }
+      ],
+      "description": "Complete review and rating system with trust scores, badges, and moderation"
+    },
+    {
+      "name": "Jobs",
+      "item": [
+        {
+          "name": "Get Job by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/jobs/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["jobs", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Get a single job listing by ID.\n\n**Returns:** Complete job details with employer information"
+          }
+        },
+        {
+          "name": "Get All Jobs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/jobs?status=open",
+              "host": ["{{baseUrl}}"],
+              "path": ["jobs"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "open",
+                  "description": "Filter by job status"
+                }
+              ]
+            },
+            "description": "Get all job listings.\n\n**Query Parameters:**\n- `status` - Filter by status (open/closed/filled)\n\n**Returns:** List of job postings"
+          }
+        }
+      ],
+      "description": "Job listing endpoints (basic implementation)"
+    },
+    {
+      "name": "Applications",
+      "item": [
+        {
+          "name": "Check Application Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/applications/check/:jobId/:userId",
+              "host": ["{{baseUrl}}"],
+              "path": ["applications", "check", ":jobId", ":userId"],
+              "variable": [
+                {
+                  "key": "jobId",
+                  "value": ""
+                },
+                {
+                  "key": "userId",
+                  "value": "{{userId}}"
+                }
+              ]
+            },
+            "description": "Check if a user has applied to a specific job.\n\n**Returns:** Application status and details if exists"
+          }
+        },
+        {
+          "name": "Get Application by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/applications/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["applications", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Get a single application by ID.\n\n**Returns:** Application details with job and user info"
+          }
+        }
+      ],
+      "description": "Job application management endpoints"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    }
+  ]
+}
