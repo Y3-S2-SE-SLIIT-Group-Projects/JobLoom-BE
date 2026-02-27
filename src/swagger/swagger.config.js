@@ -99,17 +99,54 @@ const options = {
         Application: {
           type: 'object',
           properties: {
-            _id: { type: 'string' },
-            jobId: { type: 'string' },
-            jobSeekerId: { type: 'string' },
-            employerId: { type: 'string' },
-            coverLetter: { type: 'string' },
+            _id: { type: 'string', example: '675c9d4c8e9a1b2c3d4e5f62' },
+            jobId: { type: 'string', description: 'Reference to Job' },
+            jobSeekerId: { type: 'string', description: 'Reference to User (applicant)' },
+            employerId: { type: 'string', description: 'Reference to User (job owner)' },
+            coverLetter: { type: 'string', maxLength: 1000 },
+            resumeUrl: { type: 'string', description: 'URL to resume (HTTP/HTTPS)' },
             status: {
               type: 'string',
               enum: ['pending', 'reviewed', 'shortlisted', 'accepted', 'rejected', 'withdrawn'],
             },
-            reviewedAt: { type: 'string', format: 'date-time' },
+            appliedAt: { type: 'string', format: 'date-time' },
+            reviewedAt: { type: 'string', format: 'date-time', nullable: true },
+            notes: {
+              type: 'string',
+              maxLength: 500,
+              description: 'Job seeker personal notes (private)',
+            },
+            employerNotes: {
+              type: 'string',
+              maxLength: 500,
+              description: 'Employer internal notes (private)',
+            },
+            statusHistory: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  status: {
+                    type: 'string',
+                    enum: [
+                      'pending',
+                      'reviewed',
+                      'shortlisted',
+                      'accepted',
+                      'rejected',
+                      'withdrawn',
+                    ],
+                  },
+                  changedAt: { type: 'string', format: 'date-time' },
+                  changedBy: { type: 'string', description: 'Reference to User' },
+                },
+              },
+            },
+            interviewDate: { type: 'string', format: 'date-time', nullable: true },
+            withdrawalReason: { type: 'string', maxLength: 500, nullable: true },
+            isActive: { type: 'boolean', default: true },
             createdAt: { type: 'string', format: 'date-time' },
+            updatedAt: { type: 'string', format: 'date-time' },
           },
         },
         Review: {
