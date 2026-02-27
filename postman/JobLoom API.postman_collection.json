@@ -1,0 +1,1042 @@
+{
+  "info": {
+    "_postman_id": "ba8d438e-5d0f-40dd-a35b-ddb75862d16d",
+    "name": "JobLoom API",
+    "description": "Complete API documentation for JobLoom Backend - A rural employment platform with comprehensive review and rating system.\n\n## Features\n\n- User Management (Registration, Login, Profile)\n    \n- Job Listings\n    \n- Applications\n    \n- Review & Rating System with Trust Scores\n    \n- Health Check Endpoints\n    \n\n## Authentication\n\nMost endpoints require JWT Bearer token authentication. Register/Login to get a token.\n\n## Base URL\n\n`http://localhost:3000/api`\n\n## Environment Variables\n\n- `{{baseUrl}}` - API base URL (default: [http://localhost:3000/api](http://localhost:3000/api))\n    \n- `{{token}}` - JWT authentication token",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "52568531",
+    "_collection_link": "https://go.postman.co/collection/52568531-ba8d438e-5d0f-40dd-a35b-ddb75862d16d?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "Health & Status",
+      "item": [
+        {
+          "name": "API Root",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": [""]
+            },
+            "description": "Get API information and available endpoints"
+          },
+          "response": []
+        },
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/health",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["health"]
+            },
+            "description": "Comprehensive health check with database, memory, and system info"
+          },
+          "response": []
+        },
+        {
+          "name": "Liveness Probe",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/healthz",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["healthz"]
+            },
+            "description": "Kubernetes liveness probe - checks if server is running"
+          },
+          "response": []
+        },
+        {
+          "name": "Readiness Probe",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/ready",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["ready"]
+            },
+            "description": "Kubernetes readiness probe - checks if server can handle requests"
+          },
+          "response": []
+        }
+      ],
+      "description": "Health check and monitoring endpoints"
+    },
+    {
+      "name": "Authentication & Users",
+      "item": [
+        {
+          "name": "Register User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.environment.set('token', jsonData.data.token);",
+                  "    pm.environment.set('userId', jsonData.data.user._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"email\": \"john.doe@example.com\",\n  \"password\": \"SecurePass123!\",\n  \"role\": \"job_seeker\",\n  \"phone\": \"+94771234567\",\n  \"location\": {\n    \"village\": \"Galle Face\",\n    \"district\": \"Colombo\",\n    \"province\": \"Western\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "register"]
+            },
+            "description": "Register a new user account.\n\n**Roles:**\n- `job_seeker` - Looking for jobs\n- `employer` - Posting jobs\n- `admin` - Platform administrator\n\n**Password Requirements:**\n- Minimum 8 characters\n- At least one uppercase, lowercase, number\n\n**Returns:** User object and JWT token"
+          },
+          "response": []
+        },
+        {
+          "name": "Verify Registration",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+94771234567\",\n  \"otp\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/verify-registration",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "verify-registration"]
+            },
+            "description": "Verify user registration with OTP sent via SMS."
+          },
+          "response": []
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.environment.set('token', jsonData.data.token);",
+                  "    pm.environment.set('userId', jsonData.data.user._id);",
+                  "}"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john.doe@example.com\",\n  \"password\": \"SecurePass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "login"]
+            },
+            "description": "Authenticate user and receive JWT token.\n\n**Returns:** User object and JWT token (valid for 7 days)"
+          },
+          "response": []
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+94771234567\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/forgot-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "forgot-password"]
+            },
+            "description": "Send password reset OTP to user's phone."
+          },
+          "response": []
+        },
+        {
+          "name": "Verify Password Reset",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+94771234567\",\n  \"otp\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/verify-password-reset",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "verify-password-reset"]
+            },
+            "description": "Verify password reset OTP and receive a reset token."
+          },
+          "response": []
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+94771234567\",\n  \"resetToken\": \"your_reset_token\",\n  \"password\": \"NewSecurePass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/reset-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "reset-password"]
+            },
+            "description": "Reset user password using the reset token."
+          },
+          "response": []
+        },
+        {
+          "name": "Get User by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/profile/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "profile", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{userId}}"
+                }
+              ]
+            },
+            "description": "Get user profile by user ID.\n\n**Requires:** JWT token"
+          },
+          "response": []
+        },
+        {
+          "name": "Get My Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "me"]
+            },
+            "description": "Get authenticated user's profile.\n\n**Requires:** JWT token\n\n**Returns:** Complete user profile including private fields"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "firstName",
+                  "value": "John",
+                  "type": "text"
+                },
+                {
+                  "key": "lastName",
+                  "value": "Doe",
+                  "type": "text"
+                },
+                {
+                  "key": "phone",
+                  "value": "+94771234567",
+                  "type": "text"
+                },
+                {
+                  "key": "cv",
+                  "description": "Upload one or more CVs",
+                  "type": "file",
+                  "value": null
+                },
+                {
+                  "key": "profileImage",
+                  "description": "Upload profile image",
+                  "type": "file",
+                  "value": null
+                },
+                {
+                  "key": "skills",
+                  "value": "[\"Farming\", \"Driving\"]",
+                  "type": "text"
+                },
+                {
+                  "key": "experience",
+                  "value": "[{\"title\": \"Farm Worker\", \"company\": \"Green Acres\", \"duration\": \"2 years\"}]",
+                  "type": "text"
+                },
+                {
+                  "key": "location",
+                  "value": "{\"village\": \"Updated Village\", \"district\": \"Colombo\", \"province\": \"Western\"}",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "profile"]
+            },
+            "description": "Update authenticated user's profile with multiple CVs, skills, experience, and location.\n\n**Requires:** JWT token\n\n**Fields:**\n- `firstName`, `lastName`, `phone`\n- `cv` (file field, supports up to 5 files)\n- `profileImage` (file field)\n- `skills` (JSON string array, e.g. `[\"skill1\", \"skill2\"]`)\n- `experience` (JSON string array of objects, e.g. `[{\"title\": \"...\", \"company\": \"...\"}]`)\n- `location` (JSON string object, e.g. `{\"village\": \"...\", \"district\": \"...\"}`)"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Account",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password\": \"SecurePass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/account",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "account"]
+            },
+            "description": "Deactivate authenticated user's account."
+          },
+          "response": []
+        }
+      ],
+      "description": "User registration, authentication, and profile management"
+    },
+    {
+      "name": "Reviews & Ratings",
+      "item": [
+        {
+          "name": "Create Review",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.environment.set('reviewId', jsonData.data.review._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"revieweeId\": \"675c9d4c8e9a1b2c3d4e5f67\",\n  \"jobId\": \"675c9d4c8e9a1b2c3d4e5f68\",\n  \"reviewerType\": \"job_seeker\",\n  \"rating\": 5,\n  \"comment\": \"Excellent employer! Paid on time and good working conditions.\",\n  \"workQuality\": 5,\n  \"communication\": 5,\n  \"punctuality\": 5,\n  \"paymentOnTime\": 5\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reviews",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews"]
+            },
+            "description": "Create a new review for an employer or job seeker.\n\n**Requires:** JWT token + Accepted application\n\n**Reviewer Types:**\n- `job_seeker` - Review employer\n- `employer` - Review job seeker\n\n**Rating Criteria (1-5):**\n- `workQuality` - Quality of work\n- `communication` - Communication skills\n- `punctuality` - Timeliness\n- `paymentOnTime` - Payment punctuality (for employers)\n\n**Validation:**\n- Must have worked together (accepted application)\n- Cannot review yourself\n- One review per job per person\n- Can only review within job context"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Review by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reviews/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{reviewId}}"
+                }
+              ]
+            },
+            "description": "Get a single review by its ID.\n\n**Returns:** Complete review with populated user and job data"
+          },
+          "response": []
+        },
+        {
+          "name": "Get User Reviews",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reviews/user/:userId?page=1&limit=10&reviewerType=job_seeker&sort=-createdAt",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", "user", ":userId"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number"
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": "Results per page"
+                },
+                {
+                  "key": "reviewerType",
+                  "value": "job_seeker",
+                  "description": "Filter by reviewer type"
+                },
+                {
+                  "key": "sort",
+                  "value": "-createdAt",
+                  "description": "Sort field (- for desc)"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "userId",
+                  "value": "{{userId}}"
+                }
+              ]
+            },
+            "description": "Get all reviews for a specific user.\n\n**Query Parameters:**\n- `page` - Page number (default: 1)\n- `limit` - Results per page (default: 10)\n- `reviewerType` - Filter by type (job_seeker/employer)\n- `sort` - Sort by field (e.g., -createdAt for newest first)\n\n**Returns:** Paginated review list with metadata"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Job Reviews",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reviews/job/:jobId",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", "job", ":jobId"],
+              "variable": [
+                {
+                  "key": "jobId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Get all reviews related to a specific job.\n\n**Returns:** Reviews from both employers and job seekers for this job"
+          },
+          "response": []
+        },
+        {
+          "name": "Get User Rating Statistics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reviews/stats/:userId",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", "stats", ":userId"],
+              "variable": [
+                {
+                  "key": "userId",
+                  "value": "{{userId}}"
+                }
+              ]
+            },
+            "description": "Get comprehensive rating statistics for a user.\n\n**Returns:**\n- Average rating (weighted)\n- Total reviews\n- Rating distribution\n- Trust score (0-100)\n- Badge (Elite, Top Rated, Trusted, Rising Star)\n- Criteria breakdown (work quality, communication, etc.)\n- Rating level (Excellent, Very Good, etc.)\n\n**Trust Score Algorithm:**\n- Based on average rating, review count, and completeness\n- Range: 0-100\n- Factors: consistency, volume, detail\n\n**Badges:**\n- **Elite**: 4.8+ rating, 20+ reviews\n- **Top Rated**: 4.5+ rating, 10+ reviews\n- **Trusted**: 4.0+ rating, 5+ reviews\n- **Rising Star**: 4.0+ rating, 2-4 reviews"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Employer Reviews",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reviews/employer/:employerId",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", "employer", ":employerId"],
+              "variable": [
+                {
+                  "key": "employerId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Get all reviews for an employer (alias for user reviews)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Job Seeker Reviews",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reviews/jobseeker/:jobSeekerId",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", "jobseeker", ":jobSeekerId"],
+              "variable": [
+                {
+                  "key": "jobSeekerId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Get all reviews for a job seeker (alias for user reviews)."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Review",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 4,\n  \"comment\": \"Updated review: Good experience overall.\",\n  \"workQuality\": 4,\n  \"communication\": 4,\n  \"punctuality\": 5\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reviews/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{reviewId}}"
+                }
+              ]
+            },
+            "description": "Update your own review.\n\n**Requires:** JWT token + Review ownership\n\n**Restrictions:**\n- Can only update own reviews\n- Can only update within 7 days of creation\n- Cannot change reviewee or job\n\n**Updatable Fields:**\n- rating, comment\n- workQuality, communication, punctuality, paymentOnTime"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Review",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reviews/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{reviewId}}"
+                }
+              ]
+            },
+            "description": "Delete (soft delete) your own review.\n\n**Requires:** JWT token + Review ownership\n\n**Note:** This is a soft delete - review is marked as deleted but data is retained for moderation."
+          },
+          "response": []
+        },
+        {
+          "name": "Report Review",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"This review contains false information and inappropriate language.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reviews/:id/report",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", ":id", "report"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{reviewId}}"
+                }
+              ]
+            },
+            "description": "Report a review for moderation.\n\n**Requires:** JWT token\n\n**Reasons for Reporting:**\n- False information\n- Inappropriate language\n- Personal attacks\n- Spam or abuse\n\n**Restrictions:**\n- Cannot report own reviews\n- One report per user per review\n- Reports are reviewed by moderators"
+          },
+          "response": []
+        }
+      ],
+      "description": "Complete review and rating system with trust scores, badges, and moderation"
+    },
+    {
+      "name": "Jobs",
+      "item": [
+        {
+          "name": "Get Job by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/jobs/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["jobs", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Get a single job listing by ID.\n\n**Returns:** Complete job details with employer information"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Recommended Jobs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/jobs/recommendations",
+              "host": ["{{baseUrl}}"],
+              "path": ["jobs", "recommendations"]
+            },
+            "description": "Get job recommendations for the authenticated user based on their skills."
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Jobs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/jobs?status=open",
+              "host": ["{{baseUrl}}"],
+              "path": ["jobs"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "open",
+                  "description": "Filter by job status"
+                }
+              ]
+            },
+            "description": "Get all job listings.\n\n**Query Parameters:**\n- `status` - Filter by status (open/closed/filled)\n\n**Returns:** List of job postings"
+          },
+          "response": []
+        }
+      ],
+      "description": "Job listing endpoints (basic implementation)"
+    },
+    {
+      "name": "Applications",
+      "item": [
+        {
+          "name": "Apply for job",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jobId\": \"675c9d4c8e9a1b2c3d4e5f61\",\n  \"coverLetter\": \"I have 5 years of relevant experience and would love to contribute.\",\n  \"resumeUrl\": \"https://example.com/resume.pdf\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/applications",
+              "host": ["{{baseUrl}}"],
+              "path": ["applications"]
+            },
+            "description": "Submit an application for a job as a job seeker. The job must be open. One application per user per job."
+          },
+          "response": []
+        },
+        {
+          "name": "Get My Applications",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "GET",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/applications/my-applications",
+              "host": ["{{baseUrl}}"],
+              "path": ["applications", "my-applications"]
+            },
+            "description": "Paginated list of applications for the authenticated job seeker. Optional filters."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Application by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/applications/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["applications", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Get a single application. User must be the applicant, job owner, or admin."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Applications for a Job",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/applications/job/:jobId",
+              "host": ["{{baseUrl}}"],
+              "path": ["applications", "job", ":jobId"],
+              "variable": [
+                {
+                  "key": "jobId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": " Paginated list of applications for a job. Employer must own the job."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Application Stats for a Job",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/applications/job/:jobId/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["applications", "job", ":jobId", "stats"],
+              "variable": [
+                {
+                  "key": "jobId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Counts of applications per status for a job. Employer must own the job."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Application Status",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"shortlisted\",\n  \"employerNotes\": \"Good fit for the role. Scheduling interview.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/applications/:id/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["applications", ":id", "status"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Change application status. Employer must own the job. Only valid transitions are allowed."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Application Notes",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"Follow up next week. Spoke with hiring manager.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/applications/:id/notes",
+              "host": ["{{baseUrl}}"],
+              "path": ["applications", ":id", "notes"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Update the applicant’s private notes. Notes are not visible to the employer."
+          },
+          "response": []
+        },
+        {
+          "name": "Schedule Interview",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"interviewDate\": \"2025-05-15T10:00:00.000Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/applications/:id/interview-date",
+              "host": ["{{baseUrl}}"],
+              "path": ["applications", ":id", "interview-date"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Set or change the interview date. Employer must own the job. Date must be in the future."
+          },
+          "response": []
+        },
+        {
+          "name": "Withdraw Application",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"withdrawalReason\": \"Found another opportunity.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/applications/:id/withdraw",
+              "host": ["{{baseUrl}}"],
+              "path": ["applications", ":id", "withdraw"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Withdraw an application. Only allowed for pending or reviewed. Applicant must own the application."
+          },
+          "response": []
+        },
+        {
+          "name": "Check Application Eligibility",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "GET",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/applications/check/:jobId/:userId",
+              "host": ["{{baseUrl}}"],
+              "path": ["applications", "check", ":jobId", ":userId"],
+              "variable": [
+                {
+                  "key": "jobId",
+                  "value": ""
+                },
+                {
+                  "key": "userId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Check if a user has an accepted application for a job (e.g. for review eligibility)."
+          },
+          "response": []
+        }
+      ],
+      "description": "Job application management endpoints"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "requests": {},
+        "exec": [""]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "requests": {},
+        "exec": [""]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api"
+    },
+    {
+      "key": "token",
+      "value": ""
+    }
+  ]
+}

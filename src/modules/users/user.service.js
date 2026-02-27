@@ -1,0 +1,289 @@
+import User from './user.model.js';
+import jwt from 'jsonwebtoken';
+import envConfig from '../../config/env.config.js';
+import * as smsService from '../../services/sms.service.js';
+import crypto from 'crypto';
+
+const generateToken = (id) => {
+  return jwt.sign({ id }, envConfig.jwtSecret, {
+    expiresIn: envConfig.jwtExpiresIn,
+  });
+};
+
+export const registerUser = async (userData) => {
+  const { email, phone } = userData;
+
+  const userExists = await User.findOne({ email });
+
+  if (userExists) {
+    throw new Error('User already exists');
+  }
+
+  // Generate OTP
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+  const user = await User.create({
+    ...userData,
+    verificationOtp: otp,
+    verificationOtpExpires: otpExpires,
+    isVerified: false,
+  });
+
+  if (user) {
+    // Send SMS
+    try {
+      await smsService.sendOtp(phone, otp);
+    } catch (error) {
+      console.error('Failed to send verification SMS:', error);
+      // We don't throw here to allow the user to retry sending OTP
+    }
+
+    return {
+      _id: user._id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      role: user.role,
+      isVerified: user.isVerified,
+    };
+  } else {
+    throw new Error('Invalid user data');
+  }
+};
+
+/**
+ * Verify user registration OTP
+ * @param {string} phone
+ * @param {string} otp
+ * @returns {Object} { user, token }
+ */
+export const verifyRegistration = async (phone, otp) => {
+  const user = await User.findOne({
+    phone,
+    verificationOtp: otp,
+    verificationOtpExpires: { $gt: Date.now() },
+  });
+
+  if (!user) {
+    throw new Error('Invalid or expired OTP');
+  }
+
+  user.isVerified = true;
+  user.verificationOtp = null;
+  user.verificationOtpExpires = null;
+  await user.save();
+
+  return {
+    _id: user._id,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    email: user.email,
+    role: user.role,
+    token: generateToken(user._id),
+  };
+};
+
+/**
+ * Handle forgot password - Send OTP
+ * @param {string} phone
+ */
+export const forgotPassword = async (phone) => {
+  const user = await User.findOne({ phone });
+
+  if (!user) {
+    throw new Error('User not found with this phone number');
+  }
+
+  // Generate OTP
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+  user.passwordResetOtp = otp;
+  user.passwordResetOtpExpires = otpExpires;
+  await user.save();
+
+  // Send SMS
+  await smsService.sendOtp(phone, otp);
+
+  return { message: 'OTP sent to your phone' };
+};
+
+/**
+ * Verify password reset OTP
+ * @param {string} phone
+ * @param {string} otp
+ * @returns {Object} { message, resetToken }
+ */
+export const verifyPasswordReset = async (phone, otp) => {
+  const user = await User.findOne({
+    phone,
+    passwordResetOtp: otp,
+    passwordResetOtpExpires: { $gt: Date.now() },
+  });
+
+  if (!user) {
+    throw new Error('Invalid or expired OTP');
+  }
+
+  // Generate a temporary reset token to pass to the reset password step
+  const resetToken = crypto.randomBytes(20).toString('hex');
+  user.passwordResetOtp = resetToken; // Reuse this field or add a new one, let's reuse for simplicity in this flow
+  // user.passwordResetOtpExpires remains the same or we could extend it
+  await user.save();
+
+  return { message: 'OTP verified', resetToken };
+};
+
+/**
+ * Reset password
+ * @param {string} phone
+ * @param {string} resetToken
+ * @param {string} newPassword
+ */
+export const resetPassword = async (phone, resetToken, newPassword) => {
+  const user = await User.findOne({
+    phone,
+    passwordResetOtp: resetToken,
+    passwordResetOtpExpires: { $gt: Date.now() },
+  });
+
+  if (!user) {
+    throw new Error('Invalid or expired reset token');
+  }
+
+  user.password = newPassword;
+  user.passwordResetOtp = null;
+  user.passwordResetOtpExpires = null;
+  await user.save();
+
+  return { message: 'Password reset successful' };
+};
+
+/**
+ * Authenticate user & get token
+ * @param {string} email
+ * @param {string} password
+ * @returns {Object} { user, token }
+ */
+export const loginUser = async (email, password) => {
+  const user = await User.findOne({ email });
+
+  if (user && (await user.comparePassword(password))) {
+    return {
+      _id: user._id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      role: user.role,
+      token: generateToken(user._id),
+    };
+  } else {
+    throw new Error('Invalid email or password');
+  }
+};
+
+/**
+ * Get user profile
+ * @param {string} id
+ * @returns {Object} user
+ */
+export const getUserProfile = async (id) => {
+  const user = await User.findById(id).select('-password');
+  if (user) {
+    return user;
+  } else {
+    throw new Error('User not found');
+  }
+};
+
+/**
+ * Update user profile
+ * @param {Object} user - The user object from request
+ * @param {Object} updates - The updates
+ * @returns {Object} updatedUser
+ */
+export const updateUserProfile = async (user, updates) => {
+  user.firstName = updates.firstName || user.firstName;
+  user.lastName = updates.lastName || user.lastName;
+  user.phone = updates.phone || user.phone;
+  user.location = updates.location || user.location;
+  user.skills = updates.skills || user.skills;
+  user.experience = updates.experience || user.experience;
+
+  if (updates.password) {
+    user.password = updates.password;
+  }
+
+  if (updates.profileImage) {
+    user.profileImage = updates.profileImage;
+  }
+
+  // Handle multiple CVs
+  if (updates.newCVs) {
+    // If user already has CVs, append new ones.
+    // If this is the first CV, make it primary.
+    const isFirstCV = user.cvs.length === 0;
+    const mappedCVs = updates.newCVs.map((cv, index) => ({
+      ...cv,
+      isPrimary: isFirstCV && index === 0,
+    }));
+    user.cvs.push(...mappedCVs);
+  }
+
+  // Handle setting a CV as primary if requested
+  if (updates.primaryCvId) {
+    user.cvs.forEach((cv) => {
+      cv.isPrimary = cv._id.toString() === updates.primaryCvId;
+    });
+  }
+
+  // Handle deleting a CV if requested
+  if (updates.deleteCvId) {
+    user.cvs = user.cvs.filter((cv) => cv._id.toString() !== updates.deleteCvId);
+  }
+
+  const updatedUser = await user.save();
+
+  return {
+    _id: updatedUser._id,
+    firstName: updatedUser.firstName,
+    lastName: updatedUser.lastName,
+    email: updatedUser.email,
+    role: updatedUser.role,
+    token: generateToken(updatedUser._id),
+  };
+};
+
+/**
+ * Delete user (soft delete)
+ * @param {string} id
+ * @param {string} password
+ */
+export const deleteUser = async (id, password) => {
+  const user = await User.findById(id);
+
+  if (user) {
+    if (await user.comparePassword(password)) {
+      user.isActive = false;
+      await user.save();
+      return { message: 'User removed' };
+    } else {
+      throw new Error('Invalid password');
+    }
+  } else {
+    throw new Error('User not found');
+  }
+};
+
+export default {
+  registerUser,
+  verifyRegistration,
+  loginUser,
+  getUserProfile,
+  updateUserProfile,
+  deleteUser,
+  forgotPassword,
+  verifyPasswordReset,
+  resetPassword,
+};
