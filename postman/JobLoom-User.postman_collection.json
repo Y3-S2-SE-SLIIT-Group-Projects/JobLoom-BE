@@ -1,0 +1,1603 @@
+{
+  "info": {
+    "_postman_id": "c3e7f2a1-8b4d-4e9f-a2c1-1d5e8f3b7c9a",
+    "name": "JobLoom — User Management",
+    "description": "## User Management Module\n\nComplete collection for all User Management endpoints in the JobLoom platform.\n\n### Flows Covered\n- **Registration Flow:** Register → Verify OTP → Authenticated\n- **Login Flow:** Login → Get Token\n- **Password Reset Flow:** Forgot Password → Verify OTP → Reset Password\n- **Profile Management:** View, Update (with file uploads), Delete\n\n### Authentication\nProtected routes require a **JWT Bearer token**. Use the `Login` or `Verify Registration` request — the test scripts automatically save the token to `{{token}}`.\n\n### Base URL\n`http://localhost:3000/api`\n\n### Environment Variables\n| Variable | Description | Set By |\n|---|---|---|\n| `{{baseUrl}}` | API base URL | Manual |\n| `{{token}}` | JWT auth token | Auto (Login / Verify Registration) |\n| `{{userId}}` | Current user ID | Auto (Login / Verify Registration) |\n| `{{resetToken}}` | Password reset token | Auto (Verify Password Reset) |",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Registration Flow",
+      "description": "Step-by-step flow to register and activate a new user account.\n\n**Order:**\n1. Register User → creates account, sends OTP to phone\n2. Verify Registration OTP → activates account, returns JWT token",
+      "item": [
+        {
+          "name": "Register User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201 Created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Response has user data', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('_id');",
+                  "    pm.expect(json).to.have.property('email');",
+                  "    pm.expect(json.isVerified).to.equal(false);",
+                  "});",
+                  "",
+                  "pm.test('Account is unverified on registration', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.isVerified).to.be.false;",
+                  "});",
+                  "",
+                  "if (pm.response.code === 201) {",
+                  "    const json = pm.response.json();",
+                  "    pm.environment.set('userId', json._id);",
+                  "    console.log('User registered. ID saved:', json._id);",
+                  "    console.log('Check phone for OTP, then call Verify Registration.');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Kamal\",\n  \"lastName\": \"Perera\",\n  \"email\": \"kamal.perera@example.com\",\n  \"password\": \"secure123\",\n  \"role\": \"job_seeker\",\n  \"phone\": \"+94771234567\",\n  \"location\": {\n    \"village\": \"Horana\",\n    \"district\": \"Kalutara\",\n    \"province\": \"Western\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "register"]
+            },
+            "description": "Creates a new user account and sends a **6-digit OTP** to the provided phone number via SMS (Text.lk).\n\n**Note:** Account is created with `isVerified: false`. Must call `Verify Registration` to activate.\n\n**Roles:** `job_seeker` | `employer` | `admin`\n\n**Required fields:** firstName, lastName, email, password (min 6 chars), role, phone, location.village, location.district, location.province\n\n**On Success (201):** Returns user details. Token is NOT returned yet — verify OTP first."
+          },
+          "response": [
+            {
+              "name": "201 — Registered Successfully",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"firstName\": \"Kamal\",\n  \"lastName\": \"Perera\",\n  \"email\": \"kamal.perera@example.com\",\n  \"password\": \"secure123\",\n  \"role\": \"job_seeker\",\n  \"phone\": \"+94771234567\",\n  \"location\": {\n    \"village\": \"Horana\",\n    \"district\": \"Kalutara\",\n    \"province\": \"Western\"\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/users/register",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["users", "register"]
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"_id\": \"675c9d4c8e9a1b2c3d4e5f60\",\n  \"firstName\": \"Kamal\",\n  \"lastName\": \"Perera\",\n  \"email\": \"kamal.perera@example.com\",\n  \"role\": \"job_seeker\",\n  \"isVerified\": false\n}"
+            },
+            {
+              "name": "400 — Email Already Registered",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"firstName\": \"Kamal\",\n  \"lastName\": \"Perera\",\n  \"email\": \"kamal.perera@example.com\",\n  \"password\": \"secure123\",\n  \"role\": \"job_seeker\",\n  \"phone\": \"+94771234567\",\n  \"location\": {\n    \"village\": \"Horana\",\n    \"district\": \"Kalutara\",\n    \"province\": \"Western\"\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/users/register",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["users", "register"]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"message\": \"User already exists\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Verify Registration OTP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response contains JWT token', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('token');",
+                  "    pm.expect(json.token).to.be.a('string').and.not.empty;",
+                  "});",
+                  "",
+                  "pm.test('User is now verified', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('_id');",
+                  "});",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    const json = pm.response.json();",
+                  "    pm.environment.set('token', json.token);",
+                  "    pm.environment.set('userId', json._id);",
+                  "    console.log('Token saved:', json.token);",
+                  "    console.log('User ID saved:', json._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+94771234567\",\n  \"otp\": \"482931\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/verify-registration",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "verify-registration"]
+            },
+            "description": "Validates the 6-digit OTP sent to the user's phone during registration.\n\n**OTP expires after 10 minutes.**\n\n**On Success:** Account is activated (`isVerified: true`) and a JWT token is returned. The test script automatically saves `{{token}}` and `{{userId}}`."
+          },
+          "response": [
+            {
+              "name": "200 — OTP Verified, Token Returned",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"phone\": \"+94771234567\",\n  \"otp\": \"482931\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/users/verify-registration",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["users", "verify-registration"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"_id\": \"675c9d4c8e9a1b2c3d4e5f60\",\n  \"firstName\": \"Kamal\",\n  \"lastName\": \"Perera\",\n  \"email\": \"kamal.perera@example.com\",\n  \"role\": \"job_seeker\",\n  \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\"\n}"
+            },
+            {
+              "name": "400 — Invalid or Expired OTP",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"phone\": \"+94771234567\",\n  \"otp\": \"000000\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/users/verify-registration",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["users", "verify-registration"]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"message\": \"Invalid or expired OTP\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Login Flow",
+      "description": "Authenticate with email and password to receive a JWT Bearer token.",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response contains JWT token', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('token');",
+                  "    pm.expect(json.token).to.be.a('string').and.not.empty;",
+                  "});",
+                  "",
+                  "pm.test('Response contains user ID', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('_id');",
+                  "});",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    const json = pm.response.json();",
+                  "    pm.environment.set('token', json.token);",
+                  "    pm.environment.set('userId', json._id);",
+                  "    console.log('Token saved:', json.token);",
+                  "    console.log('User ID saved:', json._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"kamal.perera@example.com\",\n  \"password\": \"secure123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "login"]
+            },
+            "description": "Authenticates a user with email and password.\n\n**On Success:** Returns user details and a JWT Bearer token (valid for 7 days by default). The test script automatically saves `{{token}}` and `{{userId}}`.\n\n**Use the token:** Add `Authorization: Bearer {{token}}` to any protected request header."
+          },
+          "response": [
+            {
+              "name": "200 — Login Successful",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"kamal.perera@example.com\",\n  \"password\": \"secure123\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/users/login",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["users", "login"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"_id\": \"675c9d4c8e9a1b2c3d4e5f60\",\n  \"firstName\": \"Kamal\",\n  \"lastName\": \"Perera\",\n  \"email\": \"kamal.perera@example.com\",\n  \"role\": \"job_seeker\",\n  \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\"\n}"
+            },
+            {
+              "name": "401 — Invalid Credentials",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"kamal.perera@example.com\",\n  \"password\": \"wrongpassword\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/users/login",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["users", "login"]
+                }
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"message\": \"Invalid email or password\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Login as Employer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const json = pm.response.json();",
+                  "    pm.environment.set('employerToken', json.token);",
+                  "    pm.environment.set('employerId', json._id);",
+                  "    console.log('Employer token saved:', json.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"employer@example.com\",\n  \"password\": \"secure123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "login"]
+            },
+            "description": "Login with an employer account. Saves token to `{{employerToken}}` and ID to `{{employerId}}` for use in job management requests.\n\n**First register an employer account** (change role to `employer` in the Register request) then log in here."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. Password Reset Flow",
+      "description": "3-step flow to reset a forgotten password.\n\n**Order:**\n1. Forgot Password → sends OTP to phone\n2. Verify Password Reset OTP → returns resetToken\n3. Reset Password → sets new password using resetToken",
+      "item": [
+        {
+          "name": "Forgot Password",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response confirms OTP sent', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('message');",
+                  "    pm.expect(json.message).to.include('OTP');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+94771234567\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/forgot-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "forgot-password"]
+            },
+            "description": "Sends a **6-digit OTP** to the user's registered phone via SMS.\n\n**OTP expires after 10 minutes.**\n\nNext step: call `Verify Password Reset OTP` with the OTP received."
+          },
+          "response": [
+            {
+              "name": "200 — OTP Sent",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"phone\": \"+94771234567\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/users/forgot-password",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["users", "forgot-password"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"message\": \"OTP sent to your phone\"\n}"
+            },
+            {
+              "name": "400 — Phone Not Found",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"phone\": \"+94770000000\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/users/forgot-password",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["users", "forgot-password"]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"message\": \"User not found with this phone number\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Verify Password Reset OTP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response contains resetToken', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('resetToken');",
+                  "    pm.expect(json.resetToken).to.be.a('string').and.not.empty;",
+                  "});",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    const json = pm.response.json();",
+                  "    pm.environment.set('resetToken', json.resetToken);",
+                  "    console.log('Reset token saved:', json.resetToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+94771234567\",\n  \"otp\": \"739281\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/verify-password-reset",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "verify-password-reset"]
+            },
+            "description": "Validates the OTP received via SMS. Returns a secure `resetToken` required for the final password reset step.\n\n**OTP expires after 10 minutes.**\n\nThe test script automatically saves the `resetToken` to `{{resetToken}}`.\n\nNext step: call `Reset Password` with the saved token."
+          },
+          "response": [
+            {
+              "name": "200 — OTP Verified, Reset Token Returned",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"phone\": \"+94771234567\",\n  \"otp\": \"739281\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/users/verify-password-reset",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["users", "verify-password-reset"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"message\": \"OTP verified\",\n  \"resetToken\": \"a3f21b9c4d8e2f1a0b7c6d5e4f3a2b1c0d9e8f7a\"\n}"
+            },
+            {
+              "name": "400 — Invalid or Expired OTP",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"phone\": \"+94771234567\",\n  \"otp\": \"000000\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/users/verify-password-reset",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["users", "verify-password-reset"]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"message\": \"Invalid or expired OTP\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Reset Password",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response confirms password reset', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('message');",
+                  "    pm.expect(json.message).to.include('reset successful');",
+                  "});",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    pm.environment.unset('resetToken');",
+                  "    console.log('Password reset successful. Reset token cleared.');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+94771234567\",\n  \"resetToken\": \"{{resetToken}}\",\n  \"password\": \"newSecure456\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/reset-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "reset-password"]
+            },
+            "description": "Sets a new password using the `resetToken` from `Verify Password Reset OTP`.\n\n**The new password is automatically hashed** by a Mongoose pre-save hook.\n\nAfter success, the reset token is invalidated. The test script clears `{{resetToken}}` from the environment.\n\n**Then:** Log in again with the new password."
+          },
+          "response": [
+            {
+              "name": "200 — Password Reset Successful",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"phone\": \"+94771234567\",\n  \"resetToken\": \"a3f21b9c4d8e2f1a0b7c6d5e4f3a2b1c0d9e8f7a\",\n  \"password\": \"newSecure456\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/users/reset-password",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["users", "reset-password"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"message\": \"Password reset successful\"\n}"
+            },
+            {
+              "name": "400 — Invalid or Expired Reset Token",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"phone\": \"+94771234567\",\n  \"resetToken\": \"invalidtoken\",\n  \"password\": \"newSecure456\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/users/reset-password",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["users", "reset-password"]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"message\": \"Invalid or expired reset token\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Profile Management",
+      "description": "Protected endpoints for viewing and managing the authenticated user's profile.\n\n**All requests require:** `Authorization: Bearer {{token}}`\n\nRun `Login` or `Verify Registration` first to populate `{{token}}`.",
+      "item": [
+        {
+          "name": "Get My Profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has user profile fields', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('_id');",
+                  "    pm.expect(json).to.have.property('email');",
+                  "    pm.expect(json).to.have.property('role');",
+                  "    pm.expect(json).to.not.have.property('password');",
+                  "});",
+                  "",
+                  "pm.test('Password is not exposed', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.not.have.property('password');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "me"]
+            },
+            "description": "Returns the full profile of the currently authenticated user.\n\n**Password is always excluded** from the response.\n\n**Requires:** `Authorization: Bearer {{token}}`"
+          },
+          "response": [
+            {
+              "name": "200 — Profile Returned",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/users/me",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["users", "me"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"_id\": \"675c9d4c8e9a1b2c3d4e5f60\",\n  \"firstName\": \"Kamal\",\n  \"lastName\": \"Perera\",\n  \"email\": \"kamal.perera@example.com\",\n  \"role\": \"job_seeker\",\n  \"phone\": \"+94771234567\",\n  \"location\": {\n    \"village\": \"Horana\",\n    \"district\": \"Kalutara\",\n    \"province\": \"Western\"\n  },\n  \"profileImage\": \"\",\n  \"cvs\": [],\n  \"skills\": [],\n  \"experience\": [],\n  \"isVerified\": true,\n  \"isActive\": true,\n  \"createdAt\": \"2026-02-27T10:00:00.000Z\",\n  \"updatedAt\": \"2026-02-27T10:00:00.000Z\"\n}"
+            },
+            {
+              "name": "401 — Not Authorized",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/users/me",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["users", "me"]
+                }
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"message\": \"Not authorized, no token\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get User Profile by ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK or 404', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+                  "});",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    pm.test('Profile has required fields', function () {",
+                  "        const json = pm.response.json();",
+                  "        pm.expect(json).to.have.property('_id');",
+                  "        pm.expect(json).to.not.have.property('password');",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/profile/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "profile", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{userId}}",
+                  "description": "MongoDB ObjectId of the target user"
+                }
+              ]
+            },
+            "description": "Fetches a user's profile by their MongoDB ObjectId.\n\n**Password is always excluded** from the response.\n\n**Requires:** `Authorization: Bearer {{token}}`\n\n**Path Variable:** Replace `:id` with the user's MongoDB ObjectId, or use `{{userId}}` which is set automatically after login."
+          },
+          "response": [
+            {
+              "name": "200 — User Profile Returned",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/users/profile/675c9d4c8e9a1b2c3d4e5f60",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["users", "profile", "675c9d4c8e9a1b2c3d4e5f60"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"_id\": \"675c9d4c8e9a1b2c3d4e5f60\",\n  \"firstName\": \"Kamal\",\n  \"lastName\": \"Perera\",\n  \"email\": \"kamal.perera@example.com\",\n  \"role\": \"job_seeker\",\n  \"phone\": \"+94771234567\",\n  \"location\": {\n    \"village\": \"Horana\",\n    \"district\": \"Kalutara\",\n    \"province\": \"Western\"\n  },\n  \"skills\": [\"farming\", \"harvesting\"],\n  \"isVerified\": true,\n  \"isActive\": true\n}"
+            },
+            {
+              "name": "404 — User Not Found",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/users/profile/000000000000000000000000",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["users", "profile", "000000000000000000000000"]
+                }
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"message\": \"User not found\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Profile (Text Fields Only)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response contains updated token', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('token');",
+                  "});",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    const json = pm.response.json();",
+                  "    pm.environment.set('token', json.token);",
+                  "    console.log('Token refreshed after profile update.');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "firstName",
+                  "value": "Kamal",
+                  "type": "text",
+                  "description": "Optional — first name"
+                },
+                {
+                  "key": "lastName",
+                  "value": "Perera",
+                  "type": "text",
+                  "description": "Optional — last name"
+                },
+                {
+                  "key": "phone",
+                  "value": "+94771234567",
+                  "type": "text",
+                  "description": "Optional — phone number"
+                },
+                {
+                  "key": "location",
+                  "value": "{\"village\": \"Panadura\", \"district\": \"Kalutara\", \"province\": \"Western\"}",
+                  "type": "text",
+                  "description": "Optional — JSON string of location object"
+                },
+                {
+                  "key": "skills",
+                  "value": "[\"farming\", \"harvesting\", \"irrigation\"]",
+                  "type": "text",
+                  "description": "Optional — JSON string of skills array"
+                },
+                {
+                  "key": "experience",
+                  "value": "[{\"title\": \"Farm Supervisor\", \"company\": \"Green Fields Ltd\", \"duration\": \"2 years\", \"description\": \"Managed paddy cultivation\"}]",
+                  "type": "text",
+                  "description": "Optional — JSON string of experience array"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "profile"]
+            },
+            "description": "Updates text-based profile fields. No file uploads in this variant.\n\n**Content-Type:** `multipart/form-data` (auto-set by Postman for form-data body)\n\n**All fields are optional.** Send only what you want to update.\n\n**JSON string fields:** `location`, `skills`, `experience` must be sent as JSON strings.\n\n**Returns:** Updated user + refreshed JWT token (auto-saved to `{{token}}` by test script)."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Profile (With Profile Image)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    const json = pm.response.json();",
+                  "    pm.environment.set('token', json.token);",
+                  "    console.log('Token refreshed.');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "firstName",
+                  "value": "Kamal",
+                  "type": "text"
+                },
+                {
+                  "key": "profileImage",
+                  "type": "file",
+                  "src": [],
+                  "description": "Upload a profile photo (jpg, jpeg, png — max 5MB)"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "profile"]
+            },
+            "description": "Updates profile with a profile image upload.\n\n**File:** Select a `jpg`, `jpeg`, or `png` file (max 5MB) for the `profileImage` field.\n\nFile is saved to `uploads/profiles/` on the server."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Profile (Upload CV)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    const json = pm.response.json();",
+                  "    pm.environment.set('token', json.token);",
+                  "    console.log('Token refreshed. CV uploaded.');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "cv",
+                  "type": "file",
+                  "src": [],
+                  "description": "Upload a CV file (pdf, doc, docx — max 5MB, up to 5 files)"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "profile"]
+            },
+            "description": "Uploads one or more CV files to the user's profile.\n\n**File field name:** `cv` (select multiple files to upload up to 5 at once)\n\n**Allowed types:** pdf, doc, docx — max 5MB each\n\nFirst uploaded CV is automatically set as primary if no CVs exist yet.\n\nFiles are saved to `uploads/cvs/` on the server."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Profile (Set Primary CV)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "primaryCvId",
+                  "value": "64abc123def456789012345a",
+                  "type": "text",
+                  "description": "The _id of the CV to promote as primary"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "profile"]
+            },
+            "description": "Promotes a specific CV to primary by its `_id`.\n\nAll other CVs will have `isPrimary` set to `false`.\n\n**Replace** the `primaryCvId` value with the actual `_id` from the user's `cvs` array (visible in `Get My Profile` response)."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Profile (Delete a CV)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "deleteCvId",
+                  "value": "64abc123def456789012345a",
+                  "type": "text",
+                  "description": "The _id of the CV to remove"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "profile"]
+            },
+            "description": "Removes a CV from the user's profile by its `_id`.\n\n**Replace** the `deleteCvId` value with the actual `_id` from the user's `cvs` array (visible in `Get My Profile` response)."
+          },
+          "response": []
+        },
+        {
+          "name": "Change Password (via Update Profile)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    const json = pm.response.json();",
+                  "    pm.environment.set('token', json.token);",
+                  "    console.log('Password changed. Token refreshed.');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "password",
+                  "value": "newSecurePassword789",
+                  "type": "text",
+                  "description": "New password (min 6 characters)"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "profile"]
+            },
+            "description": "Changes the authenticated user's password.\n\nThe new password is **automatically hashed** by the Mongoose pre-save hook before storage.\n\n**Requires:** `Authorization: Bearer {{token}}`"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "5. Account Deletion",
+      "description": "Soft delete — deactivates the account (`isActive: false`) without permanently removing data.",
+      "item": [
+        {
+          "name": "Delete Account",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response confirms deletion', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('message');",
+                  "    pm.expect(json.message).to.include('User removed');",
+                  "});",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    pm.environment.unset('token');",
+                  "    pm.environment.unset('userId');",
+                  "    console.log('Account deleted. Token and userId cleared from environment.');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password\": \"secure123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/account",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "account"]
+            },
+            "description": "Deactivates the authenticated user's account by setting `isActive: false`.\n\n**This is a soft delete** — data is retained in the database.\n\n**Requires:** Current password as confirmation to prevent unauthorized deletion.\n\nThe test script clears `{{token}}` and `{{userId}}` from the environment after successful deletion."
+          },
+          "response": [
+            {
+              "name": "200 — Account Deleted",
+              "originalRequest": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"password\": \"secure123\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/users/account",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["users", "account"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"message\": \"User removed\"\n}"
+            },
+            {
+              "name": "400 — Wrong Password",
+              "originalRequest": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"password\": \"wrongpassword\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/users/account",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["users", "account"]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"message\": \"Invalid password\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. Error Cases",
+      "description": "Requests demonstrating common error responses for testing and validation.",
+      "item": [
+        {
+          "name": "Register — Missing Required Fields",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"incomplete@example.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "register"]
+            },
+            "description": "Demonstrates the validation error response when required fields are missing.\n\n**Expected:** `400 Bad Request` with an `errors` array listing each missing field."
+          },
+          "response": [
+            {
+              "name": "400 — Validation Errors",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"incomplete@example.com\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/users/register",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["users", "register"]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"errors\": [\n    { \"msg\": \"First name is required\", \"path\": \"firstName\" },\n    { \"msg\": \"Last name is required\", \"path\": \"lastName\" },\n    { \"msg\": \"Password must be at least 6 characters long\", \"path\": \"password\" },\n    { \"msg\": \"Invalid role\", \"path\": \"role\" },\n    { \"msg\": \"Phone number is required\", \"path\": \"phone\" },\n    { \"msg\": \"Village is required\", \"path\": \"location.village\" },\n    { \"msg\": \"District is required\", \"path\": \"location.district\" },\n    { \"msg\": \"Province is required\", \"path\": \"location.province\" }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Protected Route — No Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 401 Unauthorized', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "",
+                  "pm.test('Response has unauthorized message', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('message');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "me"]
+            },
+            "description": "Demonstrates the 401 response when no Authorization header is provided.\n\n**Expected:** `401 Unauthorized` with `{ message: 'Not authorized, no token' }`"
+          },
+          "response": [
+            {
+              "name": "401 — No Token",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/users/me",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["users", "me"]
+                }
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"message\": \"Not authorized, no token\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Protected Route — Invalid Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 401 Unauthorized', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer this.is.an.invalid.token"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "me"]
+            },
+            "description": "Demonstrates the 401 response when an invalid or expired JWT token is provided.\n\n**Expected:** `401 Unauthorized` with `{ message: 'Not authorized, token failed' }`"
+          },
+          "response": [
+            {
+              "name": "401 — Invalid Token",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer this.is.an.invalid.token"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/users/me",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["users", "me"]
+                }
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"message\": \"Not authorized, token failed\"\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
