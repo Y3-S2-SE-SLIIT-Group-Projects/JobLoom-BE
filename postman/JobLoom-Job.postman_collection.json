@@ -1,0 +1,522 @@
+{
+  "info": {
+    "_postman_id": "409a71dc-0dab-44a5-9052-d8e1657ff00d",
+    "name": "JobLoom-Job",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "39966362"
+  },
+  "item": [
+    {
+      "name": "Job_Testing",
+      "item": [
+        {
+          "name": "ErrorScenarios",
+          "item": [
+            {
+              "name": "http://localhost:3000/api/jobs",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5YTA4MTE2MzZlMjkzMjgyNDBmY2RjNCIsImlhdCI6MTc3MjEyNzk5NSwiZXhwIjoxNzcyNzMyNzk1fQ.Y1-DBG7IwpinOWeoHgRnhMVXu-kWbwxkWmmSs4mNHL0",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"title\": \"Rice Paddy Harvester Needed\",\r\n  \"description\": \"Looking for experienced workers to help with rice paddy harvesting season. Must be physically fit and have basic farming knowledge.\",\r\n  \"category\": \"agriculture\",\r\n  \"employmentType\": \"seasonal\",\r\n  \"salaryAmount\": 1500,\r\n  \"salaryType\": \"daily\",\r\n  \"currency\": \"LKR\",\r\n  \"positions\": 5,\r\n  \"skillsRequired\": [\"farming\", \"harvesting\"],\r\n  \"location\": {\r\n    \"village\": \"Horana\",\r\n    \"district\": \"Kalutara\",\r\n    \"province\": \"Western\",\r\n    \"fullAddress\": \"Horana, Kalutara District\",\r\n    \"coordinates\": {\r\n      \"type\": \"Point\",\r\n      \"coordinates\": [80.0626, 6.7153]\r\n    }\r\n  },\r\n  \"requirements\": \"Must be physically fit. Previous farming experience preferred.\",\r\n  \"benefits\": \"Lunch provided. Transport allowance.\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "http://localhost:3000/api/jobs",
+                  "protocol": "http",
+                  "host": ["localhost"],
+                  "port": "3000",
+                  "path": ["api", "jobs"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "http://localhost:3000/api/jobs/rgirgnfkvd",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5YTA4MGM5MzZlMjkzMjgyNDBmY2RjMSIsImlhdCI6MTc3MjEyNjY3MywiZXhwIjoxNzcyNzMxNDczfQ.LADCFk90WqBZCbFYz1JsRGshjfZlbRZvIAq9MtAhuBA",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "http://localhost:3000/api/jobs/rgirgnfkvd",
+                  "protocol": "http",
+                  "host": ["localhost"],
+                  "port": "3000",
+                  "path": ["api", "jobs", "rgirgnfkvd"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "http://localhost:3000/api/jobs/69913e3118d6a93f6fa1c163",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5YTA4MGM5MzZlMjkzMjgyNDBmY2RjMSIsImlhdCI6MTc3MjEyNjY3MywiZXhwIjoxNzcyNzMxNDczfQ.LADCFk90WqBZCbFYz1JsRGshjfZlbRZvIAq9MtAhuBA",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "PUT",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"title\": \"Rice Paddy Harvester Needed\",\r\n  \"description\": \"Looking for experienced workers to help with rice paddy harvesting season. Must be physically fit and have basic farming knowledge.\",\r\n  \"category\": \"agriculture\",\r\n  \"employmentType\": \"seasonal\",\r\n  \"salaryAmount\": 1500,\r\n  \"salaryType\": \"daily\",\r\n  \"currency\": \"LKR\",\r\n  \"positions\": 5,\r\n  \"skillsRequired\": [\"farming\", \"harvesting\"],\r\n  \"location\": {\r\n    \"village\": \"Horana\",\r\n    \"district\": \"Kalutara\",\r\n    \"province\": \"Western\",\r\n    \"fullAddress\": \"Horana, Kalutara District\",\r\n    \"coordinates\": {\r\n      \"type\": \"Point\",\r\n      \"coordinates\": [80.0626, 6.7153]\r\n    }\r\n  },\r\n  \"requirements\": \"Must be physically fit. Previous farming experience preferred.\",\r\n  \"benefits\": \"Lunch provided. Transport allowance.\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "http://localhost:3000/api/jobs/69913e3118d6a93f6fa1c163",
+                  "protocol": "http",
+                  "host": ["localhost"],
+                  "port": "3000",
+                  "path": ["api", "jobs", "69913e3118d6a93f6fa1c163"]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "New Request",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"firstName\": \"Kamal\",\r\n  \"lastName\": \"Perera\",\r\n  \"email\": \"employer.kamal@test.com\",\r\n  \"password\": \"Test@1234\",\r\n  \"role\": \"employer\",\r\n  \"phone\": \"0771234567\",\r\n  \"location\": {\r\n    \"village\": \"Dehiwala\",\r\n    \"district\": \"Colombo\",\r\n    \"province\": \"Western\"\r\n  },\r\n  \"companyName\": \"Kamal Farms\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/users/register",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "users", "register"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "http://localhost:3000/api/users/register",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5OTE0NjgwZWFiMmEwZjk0ZDcwNTM3YiIsImlhdCI6MTc3MTEyODQ2MSwiZXhwIjoxNzcxNzMzMjYxfQ.cujy8BF8oxjoTGWbmvk5bTJkEzK4qWt63BUbF94P7pQ",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"firstName\": \"Nimal\",\r\n  \"lastName\": \"Silva\",\r\n  \"email\": \"jobseeker.nimal@test.com\",\r\n  \"password\": \"Test@1234\",\r\n  \"role\": \"job_seeker\",\r\n  \"phone\": \"0772345678\",\r\n  \"location\": {\r\n    \"village\": \"Panadura\",\r\n    \"district\": \"Kalutara\",\r\n    \"province\": \"Western\"\r\n  },\r\n  \"skills\": [\"farming\", \"harvesting\", \"irrigation\"]\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/users/register",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "users", "register"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "http://localhost:3000/api/users/login",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5OTE0NjgwZWFiMmEwZjk0ZDcwNTM3YiIsImlhdCI6MTc3MTEyODQ2MSwiZXhwIjoxNzcxNzMzMjYxfQ.cujy8BF8oxjoTGWbmvk5bTJkEzK4qWt63BUbF94P7pQ",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n \"email\": \"employer.kamal@test.com\",\r\n  \"password\": \"Test@1234\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/users/login",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "users", "login"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "http://localhost:3000/api/jobs",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5YTA4MGM5MzZlMjkzMjgyNDBmY2RjMSIsImlhdCI6MTc3MjEyNjY3MywiZXhwIjoxNzcyNzMxNDczfQ.LADCFk90WqBZCbFYz1JsRGshjfZlbRZvIAq9MtAhuBA",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"title\": \"Rice Paddy Harvester Needed\",\r\n  \"description\": \"Looking for experienced workers to help with rice paddy harvesting season. Must be physically fit and have basic farming knowledge.\",\r\n  \"category\": \"agriculture\",\r\n  \"employmentType\": \"seasonal\",\r\n  \"salaryAmount\": 1500,\r\n  \"salaryType\": \"daily\",\r\n  \"currency\": \"LKR\",\r\n  \"positions\": 5,\r\n  \"skillsRequired\": [\"farming\", \"harvesting\"],\r\n  \"location\": {\r\n    \"village\": \"Horana\",\r\n    \"district\": \"Kalutara\",\r\n    \"province\": \"Western\",\r\n    \"fullAddress\": \"Horana, Kalutara District\",\r\n    \"coordinates\": {\r\n      \"type\": \"Point\",\r\n      \"coordinates\": [80.0626, 6.7153]\r\n    }\r\n  },\r\n  \"requirements\": \"Must be physically fit. Previous farming experience preferred.\",\r\n  \"benefits\": \"Lunch provided. Transport allowance.\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/jobs",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "jobs"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "http://localhost:3000/api/jobs",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/jobs",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "jobs"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "http://localhost:3000/api/jobs/69a0822336e29328240fcdc8",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/jobs/69a0822336e29328240fcdc8",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "jobs", "69a0822336e29328240fcdc8"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "http://localhost:3000/api/jobs/nearby",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/jobs/nearby?lat=6.9271&lng=79.8612&radius=50",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "jobs", "nearby"],
+              "query": [
+                {
+                  "key": "lat",
+                  "value": "6.9271"
+                },
+                {
+                  "key": "lng",
+                  "value": "79.8612"
+                },
+                {
+                  "key": "radius",
+                  "value": "50"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "http://localhost:3000/api/jobs/employer/my-jobs",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5YTA4MGM5MzZlMjkzMjgyNDBmY2RjMSIsImlhdCI6MTc3MjEyNjY3MywiZXhwIjoxNzcyNzMxNDczfQ.LADCFk90WqBZCbFYz1JsRGshjfZlbRZvIAq9MtAhuBA",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/jobs/employer/my-jobs",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "jobs", "employer", "my-jobs"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "http://localhost:3000/api/jobs/employer/stats",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5YTA4MGM5MzZlMjkzMjgyNDBmY2RjMSIsImlhdCI6MTc3MjEyNjY3MywiZXhwIjoxNzcyNzMxNDczfQ.LADCFk90WqBZCbFYz1JsRGshjfZlbRZvIAq9MtAhuBA",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/jobs/employer/stats",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "jobs", "employer", "stats"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "http://localhost:3000/api/jobs/69a0822336e29328240fcdc8",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5YTA4MGM5MzZlMjkzMjgyNDBmY2RjMSIsImlhdCI6MTc3MjEyNjY3MywiZXhwIjoxNzcyNzMxNDczfQ.LADCFk90WqBZCbFYz1JsRGshjfZlbRZvIAq9MtAhuBA",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"title\": \"Updated: Rice Paddy Harvester - Urgent\",\r\n  \"salaryAmount\": 1800,\r\n  \"positions\": 8,\r\n  \"description\": \"Updated description with more details...\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/jobs/69a0822336e29328240fcdc8",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "jobs", "69a0822336e29328240fcdc8"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "http://localhost:3000/api/jobs/69a0822336e29328240fcdc8/close",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5YTA4MGM5MzZlMjkzMjgyNDBmY2RjMSIsImlhdCI6MTc3MjEyNjY3MywiZXhwIjoxNzcyNzMxNDczfQ.LADCFk90WqBZCbFYz1JsRGshjfZlbRZvIAq9MtAhuBA",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"title\": \"Updated: Rice Paddy Harvester - Urgent\",\r\n  \"salaryAmount\": 1800,\r\n  \"positions\": 8,\r\n  \"description\": \"Updated description with more details...\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/jobs/69a0822336e29328240fcdc8/close",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "jobs", "69a0822336e29328240fcdc8", "close"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "http://localhost:3000/api/jobs/69a0822336e29328240fcdc8/filled",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5YTA4MGM5MzZlMjkzMjgyNDBmY2RjMSIsImlhdCI6MTc3MjEyNjY3MywiZXhwIjoxNzcyNzMxNDczfQ.LADCFk90WqBZCbFYz1JsRGshjfZlbRZvIAq9MtAhuBA",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/jobs/69a0822336e29328240fcdc8/filled",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "jobs", "69a0822336e29328240fcdc8", "filled"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "http://localhost:3000/api/jobs/69a0822336e29328240fcdc8",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5YTA4MGM5MzZlMjkzMjgyNDBmY2RjMSIsImlhdCI6MTc3MjEyNjY3MywiZXhwIjoxNzcyNzMxNDczfQ.LADCFk90WqBZCbFYz1JsRGshjfZlbRZvIAq9MtAhuBA",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"title\": \"Updated: Rice Paddy Harvester - Urgent\",\r\n  \"salaryAmount\": 1800,\r\n  \"positions\": 8,\r\n  \"description\": \"Updated description with more details...\"\r\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/jobs/69a0822336e29328240fcdc8",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "jobs", "69a0822336e29328240fcdc8"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "http://localhost:3000/api/users/login",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5YTA4MGM5MzZlMjkzMjgyNDBmY2RjMSIsImlhdCI6MTc3MjEyNjY3MywiZXhwIjoxNzcyNzMxNDczfQ.LADCFk90WqBZCbFYz1JsRGshjfZlbRZvIAq9MtAhuBA",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"email\": \"jobseeker.nimal@test.com\",\r\n  \"password\": \"Test@1234\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/users/login",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "users", "login"]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
