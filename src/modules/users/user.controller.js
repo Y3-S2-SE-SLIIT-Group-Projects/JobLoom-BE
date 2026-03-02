@@ -159,10 +159,15 @@ export const updateUserProfile = async (req, res) => {
     if (req.files.cv) {
       updates.newCVs = req.files.cv.map((file) => ({
         name: file.originalname || 'CV',
-        url: file.path,
+        // Normalize to forward slashes and make path relative to project root for URL serving
+        url: file.path.replace(/\\/g, '/').replace(/^.*\/uploads\//, 'uploads/'),
       }));
     }
-    if (req.files.profileImage) updates.profileImage = req.files.profileImage[0].path;
+    if (req.files.profileImage) {
+      updates.profileImage = req.files.profileImage[0].path
+        .replace(/\\/g, '/')
+        .replace(/^.*\/uploads\//, 'uploads/');
+    }
   }
 
   // Parse JSON strings if they are sent as strings (common with formdata)
