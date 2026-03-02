@@ -1,11 +1,51 @@
 import Job from './job.model.js';
+import axios from 'axios';
 import { BadRequestException, NotFoundException } from '../../models/http-exception.js';
 import logger from '../../config/logger.config.js';
+import envConfig from '../../config/env.config.js';
 
 /**
  * Job Service
  * Business logic for job management
  */
+
+const EMPLOYER_POPULATE_SELECT = 'firstName lastName email companyName';
+
+const buildEmployerCompanyName = (employer) => {
+  if (!employer || typeof employer !== 'object') return 'Unknown employer';
+  const explicit = employer.companyName || employer.company;
+  if (explicit && String(explicit).trim()) return String(explicit).trim();
+  const fullName = [employer.firstName, employer.lastName].filter(Boolean).join(' ').trim();
+  if (fullName) return fullName;
+  if (employer.email) return employer.email;
+  return 'Unknown employer';
+};
+
+const normalizeJobEmployer = (jobDoc) => {
+  const job = typeof jobDoc?.toObject === 'function' ? jobDoc.toObject() : { ...jobDoc };
+  const employer = job?.employerId && typeof job.employerId === 'object' ? job.employerId : null;
+
+  if (employer) {
+    job.employer = {
+      ...employer,
+      companyName: buildEmployerCompanyName(employer),
+    };
+  }
+
+  return job;
+};
+
+const calculateDistanceKm = (lat1, lng1, lat2, lng2) => {
+  const toRad = (value) => (value * Math.PI) / 180;
+  const earthRadiusKm = 6371;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return earthRadiusKm * c;
+};
 
 /**
  * Create a new job posting
@@ -180,13 +220,15 @@ export const createJob = async (jobData, employerId) => {
  */
 export const getJobById = async (jobId) => {
   try {
-    const job = await Job.findById(jobId).where({ isActive: true });
+    const job = await Job.findById(jobId)
+      .where({ isActive: true })
+      .populate('employerId', EMPLOYER_POPULATE_SELECT);
 
     if (!job) {
       throw new NotFoundException('Job not found');
     }
 
-    return job;
+    return normalizeJobEmployer(job);
   } catch (error) {
     if (error.name === 'CastError') {
       throw new BadRequestException('Invalid job ID format');
@@ -266,7 +308,11 @@ export const getAllJobs = async (options = {}) => {
 
     // Execute query
     const [jobs, totalCount] = await Promise.all([
-      Job.find(query).sort(sort).skip(skip).limit(Number(limit)),
+      Job.find(query)
+        .sort(sort)
+        .skip(skip)
+        .limit(Number(limit))
+        .populate('employerId', EMPLOYER_POPULATE_SELECT),
       Job.countDocuments(query),
     ]);
 
@@ -276,7 +322,7 @@ export const getAllJobs = async (options = {}) => {
     const hasPrevPage = page > 1;
 
     return {
-      jobs,
+      jobs: jobs.map(normalizeJobEmployer),
       pagination: {
         currentPage: Number(page),
         totalPages,
@@ -312,11 +358,13 @@ export const getJobsByEmployer = async (employerId, options = {}) => {
       query.status = status;
     }
 
-    const jobs = await Job.find(query).sort({ createdAt: -1 });
+    const jobs = await Job.find(query)
+      .sort({ createdAt: -1 })
+      .populate('employerId', EMPLOYER_POPULATE_SELECT);
 
     logger.info(`Retrieved ${jobs.length} jobs for employer: ${employerId}`);
 
-    return jobs;
+    return jobs.map(normalizeJobEmployer);
   } catch (error) {
     logger.error('Error fetching employer jobs:', error);
     throw error;
@@ -333,26 +381,74 @@ export const getJobsByEmployer = async (employerId, options = {}) => {
 export const getNearbyJobs = async (longitude, latitude, radiusInKm = 50) => {
   try {
     // Validate coordinates
-    if (!longitude || !latitude) {
+    if (
+      longitude === undefined ||
+      longitude === null ||
+      latitude === undefined ||
+      latitude === null
+    ) {
       throw new BadRequestException('Longitude and latitude are required');
     }
 
-    if (longitude < -180 || longitude > 180) {
+    if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
       throw new BadRequestException('Invalid longitude value');
     }
 
-    if (latitude < -90 || latitude > 90) {
+    if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) {
       throw new BadRequestException('Invalid latitude value');
     }
 
     // Convert km to meters
     const radiusInMeters = radiusInKm * 1000;
 
-    const jobs = await Job.findNearby(longitude, latitude, radiusInMeters);
+    try {
+      const jobs = await Job.findNearby(longitude, latitude, radiusInMeters).populate(
+        'employerId',
+        EMPLOYER_POPULATE_SELECT
+      );
 
-    logger.info(`Found ${jobs.length} jobs within ${radiusInKm}km radius`);
+      logger.info(`Found ${jobs.length} jobs within ${radiusInKm}km radius`);
+      return jobs.map(normalizeJobEmployer);
+    } catch (geoError) {
+      const missingGeoIndex =
+        geoError?.name === 'MongoServerError' &&
+        typeof geoError?.message === 'string' &&
+        geoError.message
+          .toLowerCase()
+          .includes('unable to find index for $geoNear query'.toLowerCase());
 
-    return jobs;
+      if (!missingGeoIndex) {
+        throw geoError;
+      }
+
+      logger.warn('2dsphere index missing. Falling back to manual nearby calculation.');
+
+      const jobsWithCoordinates = await Job.find({
+        status: 'open',
+        isActive: true,
+        'location.coordinates.type': 'Point',
+      }).populate('employerId', EMPLOYER_POPULATE_SELECT);
+
+      const nearbyJobs = jobsWithCoordinates
+        .map((jobDoc) => {
+          const job = normalizeJobEmployer(jobDoc);
+          const coords = job?.location?.coordinates?.coordinates;
+
+          if (!Array.isArray(coords) || coords.length !== 2) return null;
+          const [jobLng, jobLat] = coords;
+          if (!Number.isFinite(jobLng) || !Number.isFinite(jobLat)) return null;
+
+          const distanceKm = calculateDistanceKm(latitude, longitude, jobLat, jobLng);
+          if (distanceKm > radiusInKm) return null;
+
+          return { ...job, distance: Number(distanceKm.toFixed(2)) };
+        })
+        .filter(Boolean)
+        .sort((a, b) => a.distance - b.distance);
+
+      logger.info(`Found ${nearbyJobs.length} jobs within ${radiusInKm}km radius (fallback mode)`);
+      return nearbyJobs;
+    }
   } catch (error) {
     logger.error('Error fetching nearby jobs:', error);
     throw error;
@@ -573,6 +669,132 @@ export const hardDeleteJob = async (jobId) => {
 };
 
 /**
+ * Generate a job description using a third-party AI API
+ * @param {Object} input - Job draft data
+ * @returns {Promise<{description: string, source: string}>}
+ */
+export const generateJobDescription = async (input = {}) => {
+  const payload = {
+    title: input.title?.trim() || '',
+    category: input.category?.trim() || '',
+    jobRole: input.jobRole?.trim() || '',
+    employmentType: input.employmentType?.trim() || '',
+    salaryType: input.salaryType?.trim() || '',
+    salaryAmount: input.salaryAmount || '',
+    experienceRequired: input.experienceRequired?.trim() || '',
+    positions: input.positions || '',
+    skillsRequired: Array.isArray(input.skillsRequired) ? input.skillsRequired : [],
+    location: {
+      village: input.location?.village?.trim() || '',
+      district: input.location?.district?.trim() || '',
+      province: input.location?.province?.trim() || '',
+      fullAddress: input.location?.fullAddress?.trim() || '',
+    },
+  };
+
+  if (!payload.title && !payload.jobRole && !payload.category) {
+    throw new BadRequestException(
+      'Provide at least one of title, job role, or category to generate a description'
+    );
+  }
+
+  const promptLines = [
+    'Generate a professional job description in HTML for a job post.',
+    'Use only these HTML tags: p, h3, ul, li, strong.',
+    'Keep it concise and practical (120-220 words).',
+    '',
+    `Title: ${payload.title || 'Not provided'}`,
+    `Category: ${payload.category || 'Not provided'}`,
+    `Job Role: ${payload.jobRole || 'Not provided'}`,
+    `Employment Type: ${payload.employmentType || 'Not provided'}`,
+    `Salary: ${payload.salaryAmount || 'Not provided'} ${
+      payload.salaryType ? `(${payload.salaryType})` : ''
+    }`,
+    `Experience Level: ${payload.experienceRequired || 'Not provided'}`,
+    `Positions: ${payload.positions || 'Not provided'}`,
+    `Skills: ${payload.skillsRequired.length > 0 ? payload.skillsRequired.join(', ') : 'Not provided'}`,
+    `Location: ${
+      payload.location.fullAddress ||
+      [payload.location.village, payload.location.district, payload.location.province]
+        .filter(Boolean)
+        .join(', ') ||
+      'Not provided'
+    }`,
+  ];
+
+  const fallbackHtml = `<h3>Job Overview</h3><p>We are looking for ${
+    payload.title || payload.jobRole || 'a motivated candidate'
+  } to join our team${
+    payload.location.district ? ` in ${payload.location.district}` : ''
+  }. This role is ideal for someone who can work with commitment and deliver consistent results.</p><h3>Key Responsibilities</h3><ul><li>Carry out day-to-day tasks related to ${
+    payload.jobRole || payload.category || 'the assigned role'
+  }.</li><li>Collaborate with team members and follow workplace standards.</li><li>Maintain quality, productivity, and safety throughout all duties.</li></ul><h3>Requirements</h3><ul><li>${
+    payload.experienceRequired
+      ? `Experience level: ${payload.experienceRequired}.`
+      : 'Willingness to learn and adapt.'
+  }</li><li>${
+    payload.skillsRequired.length > 0
+      ? `Skills: ${payload.skillsRequired.join(', ')}.`
+      : 'Good communication and responsibility.'
+  }</li><li>${
+    payload.employmentType
+      ? `Employment type: ${payload.employmentType}.`
+      : 'Ability to work according to business needs.'
+  }</li></ul>`;
+
+  if (!envConfig.geminiApiKey) {
+    logger.warn('GEMINI_API_KEY is not configured. Returning template-based description.');
+    return { description: fallbackHtml, source: 'template' };
+  }
+
+  try {
+    const response = await axios.post(
+      `${envConfig.geminiApiBaseUrl}/models/${envConfig.geminiModel}:generateContent`,
+      {
+        systemInstruction: {
+          parts: [
+            {
+              text: 'You write high-quality job descriptions. Respond only with valid HTML and no markdown fences.',
+            },
+          ],
+        },
+        contents: [
+          {
+            role: 'user',
+            parts: [{ text: promptLines.join('\n') }],
+          },
+        ],
+        generationConfig: {
+          temperature: 0.7,
+        },
+      },
+      {
+        headers: {
+          'x-goog-api-key': envConfig.geminiApiKey,
+          'Content-Type': 'application/json',
+        },
+        timeout: 15000,
+      }
+    );
+
+    const aiHtml = response?.data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+
+    if (!aiHtml) {
+      logger.warn('AI returned empty content. Falling back to template.');
+      return { description: fallbackHtml, source: 'template' };
+    }
+
+    return { description: aiHtml, source: 'ai' };
+  } catch (error) {
+    logger.error('Job description generation failed, using template fallback', {
+      message: error.message,
+      status: error.response?.status,
+    });
+    return { description: fallbackHtml, source: 'template' };
+  }
+};
+
+/**
  * Get recommended jobs for a user based on their skills
  * @param {Object} user - User object
  * @returns {Promise<Array>} Recommended jobs
@@ -611,6 +833,7 @@ export default {
   getJobsByEmployer,
   getNearbyJobs,
   searchJobs,
+  generateJobDescription,
   getRecommendedJobs,
   getEmployerStats,
   updateJob,
