@@ -21,6 +21,16 @@ export const createJob = async (req, res) => {
 };
 
 /**
+ * @route   POST /api/jobs/generate-description
+ * @desc    Generate a job description from draft fields
+ * @access  Private (Employer only)
+ */
+export const generateJobDescription = async (req, res) => {
+  const result = await jobService.generateJobDescription(req.body);
+  sendSuccess(res, 'Job description generated successfully', result);
+};
+
+/**
  * @route   GET /api/jobs
  * @desc    Get all jobs with filtering, searching, sorting, and pagination
  * @access  Public
@@ -159,6 +169,7 @@ export const deleteJob = async (req, res) => {
 
 export default {
   createJob,
+  generateJobDescription,
   getAllJobs,
   getNearbyJobs,
   getEmployerJobs,

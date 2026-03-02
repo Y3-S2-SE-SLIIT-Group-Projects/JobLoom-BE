@@ -121,6 +121,27 @@ class EnvConfig {
   }
 
   /**
+   * Gemini API key for job description generation
+   */
+  get geminiApiKey() {
+    return process.env.GEMINI_API_KEY;
+  }
+
+  /**
+   * Gemini API base URL
+   */
+  get geminiApiBaseUrl() {
+    return process.env.GEMINI_API_BASE_URL || 'https://generativelanguage.googleapis.com/v1beta';
+  }
+
+  /**
+   * Gemini model for job description generation
+   */
+  get geminiModel() {
+    return process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+  }
+
+  /**
    * Get all configuration as an object
    */
   getAll() {
@@ -135,6 +156,9 @@ class EnvConfig {
       textLkApiBaseUrl: this.textLkApiBaseUrl,
       textLkApiToken: this.textLkApiToken ? '***' : undefined,
       textLkSenderId: this.textLkSenderId,
+      geminiApiKey: this.geminiApiKey ? '***' : undefined,
+      geminiApiBaseUrl: this.geminiApiBaseUrl,
+      geminiModel: this.geminiModel,
     };
   }
 }
