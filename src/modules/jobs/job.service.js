@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import Job from './job.model.js';
 import { BadRequestException, NotFoundException } from '../../models/http-exception.js';
 import logger from '../../config/logger.config.js';
@@ -388,13 +389,16 @@ export const searchJobs = async (searchText) => {
  */
 export const getEmployerStats = async (employerId) => {
   try {
+    // Convert string employerId to mongoose.Types.ObjectId for aggregation
+    const employerObjectId = new mongoose.Types.ObjectId(employerId);
+
     const [totalJobs, openJobs, closedJobs, filledJobs, totalApplicants] = await Promise.all([
-      Job.countDocuments({ employerId, isActive: true }),
-      Job.countDocuments({ employerId, status: 'open', isActive: true }),
-      Job.countDocuments({ employerId, status: 'closed', isActive: true }),
-      Job.countDocuments({ employerId, status: 'filled', isActive: true }),
+      Job.countDocuments({ employerId: employerObjectId, isActive: true }),
+      Job.countDocuments({ employerId: employerObjectId, status: 'open', isActive: true }),
+      Job.countDocuments({ employerId: employerObjectId, status: 'closed', isActive: true }),
+      Job.countDocuments({ employerId: employerObjectId, status: 'filled', isActive: true }),
       Job.aggregate([
-        { $match: { employerId: employerId, isActive: true } },
+        { $match: { employerId: employerObjectId, isActive: true } },
         { $group: { _id: null, total: { $sum: '$applicantsCount' } } },
       ]),
     ]);

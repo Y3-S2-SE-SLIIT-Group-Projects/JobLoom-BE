@@ -54,6 +54,11 @@ app.use(httpInterceptor);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, { explorer: true }));
 
 /**
+ * Serve Uploaded Files (profile images, CVs)
+ */
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
+/**
  * Configure Routes
  */
 app.use('/', healthRoutes); // Health check routes (/, /health, /healthz, /ready)
