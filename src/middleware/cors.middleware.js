@@ -11,7 +11,7 @@ import { getAllowedOrigins } from '../config/server.config.js';
  * Get CORS options based on environment
  */
 const getCorsOptions = () => {
-  const origin = envConfig.isDevelopment ? '*' : getAllowedOrigins();
+  const origin = envConfig.isDevelopment ? true : getAllowedOrigins();
 
   return {
     origin,
