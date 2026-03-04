@@ -25,20 +25,26 @@ const storage = multer.diskStorage({
 });
 
 function checkFileType(file, cb) {
-  const filetypes = /jpg|jpeg|png|pdf|doc|docx/;
-  const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
-  const mimetype = filetypes.test(file.mimetype);
+  const allowedExt = ['.jpg', '.jpeg', '.png', '.pdf', '.doc', '.docx'];
+  const ext = path.extname(file.originalname).toLowerCase();
 
-  if (extname && mimetype) {
-    return cb(null, true);
-  } else {
-    cb(new Error('Images and Documents only!'));
-  }
+  const allowedMime = [
+    'image/jpeg',
+    'image/png',
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  ];
+
+  const ok = allowedExt.includes(ext) && allowedMime.includes(file.mimetype);
+
+  if (ok) return cb(null, true);
+  cb(new Error('Only JPG, JPEG, PNG, PDF, DOC, DOCX are allowed!'));
 }
 
 const upload = multer({
   storage,
-  limits: { fileSize: 5000000 }, // 5MB limit
+  limits: { fileSize: 15 * 1024 * 1024 }, // 15MB
   fileFilter: function (req, file, cb) {
     checkFileType(file, cb);
   },
