@@ -47,6 +47,88 @@ const calculateDistanceKm = (lat1, lng1, lat2, lng2) => {
   return earthRadiusKm * c;
 };
 
+const hasAllowedHtmlTags = (text = '') => /<\/?(p|h3|ul|li|strong)\b/i.test(text);
+
+const normalizeToAllowedHtml = (rawText = '') => {
+  const text = String(rawText || '').trim();
+  if (!text) return '';
+  if (hasAllowedHtmlTags(text)) return text;
+
+  const cleaned = text
+    .replace(/^```(?:html)?/i, '')
+    .replace(/```$/i, '')
+    .replace(/\r/g, '')
+    .trim();
+
+  const lines = cleaned
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const overview = [];
+  const responsibilities = [];
+  const requirements = [];
+  const benefits = [];
+  let section = 'overview';
+
+  for (const line of lines) {
+    const normalized = line.replace(/\*\*/g, '').replace(/:$/, '').trim();
+    const lower = normalized.toLowerCase();
+
+    if (lower.includes('key responsibilities') || lower === 'responsibilities') {
+      section = 'responsibilities';
+      continue;
+    }
+    if (lower.includes('qualifications') || lower.includes('requirements')) {
+      section = 'requirements';
+      continue;
+    }
+    if (lower.includes('why join') || lower.includes('benefits')) {
+      section = 'benefits';
+      continue;
+    }
+    if (lower.includes('how to apply')) {
+      continue;
+    }
+
+    const item = line
+      .replace(/^[-*]\s+/, '')
+      .replace(/\*\*/g, '')
+      .trim();
+    if (!item) continue;
+
+    if (/^[-*]\s+/.test(line)) {
+      if (section === 'responsibilities') responsibilities.push(item);
+      else if (section === 'requirements') requirements.push(item);
+      else if (section === 'benefits') benefits.push(item);
+      else overview.push(item);
+      continue;
+    }
+
+    if (section === 'overview') overview.push(item);
+    else if (section === 'responsibilities') responsibilities.push(item);
+    else if (section === 'requirements') requirements.push(item);
+    else if (section === 'benefits') benefits.push(item);
+  }
+
+  const overviewText = overview.join(' ');
+  const toList = (items, fallbackItems = []) => {
+    const data = items.length > 0 ? items : fallbackItems;
+    return `<ul>${data.map((item) => `<li>${item}</li>`).join('')}</ul>`;
+  };
+
+  return [
+    '<h3>Job Overview</h3>',
+    `<p>${overviewText || 'We are looking for a motivated candidate to join our team.'}</p>`,
+    '<h3>Key Responsibilities</h3>',
+    toList(responsibilities, ['Perform day-to-day duties related to the role.']),
+    '<h3>Requirements</h3>',
+    toList(requirements, ['Good communication and collaboration skills.']),
+    '<h3>Benefits</h3>',
+    toList(benefits, ['Supportive team environment and growth opportunities.']),
+  ].join('');
+};
+
 /**
  * Create a new job posting
  * @param {Object} jobData - Job information
@@ -699,9 +781,17 @@ export const generateJobDescription = async (input = {}) => {
   }
 
   const promptLines = [
-    'Generate a professional job description in HTML for a job post.',
-    'Use only these HTML tags: p, h3, ul, li, strong.',
-    'Keep it concise and practical (120-220 words).',
+    'Generate a professional, well-structured job description in HTML for a job post.',
+    'Use ONLY these HTML tags: p, h3, ul, li, strong.',
+    'Do NOT return markdown, code fences, or explanations.',
+    'Keep it practical and clear (140-240 words).',
+    'Use this exact section order:',
+    '1) <h3>Job Overview</h3> + one <p>',
+    '2) <h3>Key Responsibilities</h3> + one <ul> with 4-6 <li>',
+    '3) <h3>Requirements</h3> + one <ul> with 4-6 <li>',
+    '4) <h3>Benefits</h3> + one <ul> with 3-5 <li>',
+    'Use concrete details from the inputs below.',
+    'If a value is missing, infer sensible neutral wording without mentioning that data is missing.',
     '',
     `Title: ${payload.title || 'Not provided'}`,
     `Category: ${payload.category || 'Not provided'}`,
@@ -742,55 +832,118 @@ export const generateJobDescription = async (input = {}) => {
       : 'Ability to work according to business needs.'
   }</li></ul>`;
 
-  if (!envConfig.geminiApiKey) {
-    logger.warn('GEMINI_API_KEY is not configured. Returning template-based description.');
-    return { description: fallbackHtml, source: 'template' };
+  if (!envConfig.cohereApiKey) {
+    logger.warn('COHERE_API_KEY is not configured. Returning template-based description.');
+    return { description: fallbackHtml, source: 'template', reason: 'cohere_key_missing' };
   }
 
   try {
-    const response = await axios.post(
-      `${envConfig.geminiApiBaseUrl}/models/${envConfig.geminiModel}:generateContent`,
-      {
-        systemInstruction: {
-          parts: [
-            {
-              text: 'You write high-quality job descriptions. Respond only with valid HTML and no markdown fences.',
-            },
+    const systemPrompt =
+      'You write high-quality job descriptions. Respond only with valid HTML and no markdown fences.';
+
+    const requestConfig = {
+      headers: {
+        Authorization: `Bearer ${envConfig.cohereApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      timeout: 15000,
+    };
+
+    const parseCohereText = (data) => {
+      const messageContent = data?.message?.content;
+      let text = '';
+
+      if (Array.isArray(messageContent)) {
+        text = messageContent
+          .map((item) => {
+            if (typeof item === 'string') return item;
+            if (item && typeof item.text === 'string') return item.text;
+            return '';
+          })
+          .filter(Boolean)
+          .join('\n')
+          .trim();
+      } else if (typeof messageContent === 'string') {
+        text = messageContent.trim();
+      }
+
+      if (!text) {
+        text =
+          data?.message?.text?.trim() ||
+          data?.text?.trim() ||
+          data?.generations?.[0]?.text?.trim() ||
+          '';
+      }
+
+      return text;
+    };
+
+    const userPrompt = promptLines.join('\n');
+    let aiHtml = '';
+    let response;
+
+    // Try Cohere v2 chat first
+    try {
+      response = await axios.post(
+        `${envConfig.cohereApiBaseUrl}/chat`,
+        {
+          model: envConfig.cohereModel,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
           ],
-        },
-        contents: [
-          {
-            role: 'user',
-            parts: [{ text: promptLines.join('\n') }],
-          },
-        ],
-        generationConfig: {
           temperature: 0.7,
         },
-      },
-      {
-        headers: {
-          'x-goog-api-key': envConfig.geminiApiKey,
-          'Content-Type': 'application/json',
-        },
-        timeout: 15000,
-      }
-    );
+        requestConfig
+      );
+      aiHtml = parseCohereText(response?.data);
+    } catch (v2Error) {
+      // Fallback for keys/models wired to Cohere v1 chat payloads
+      logger.warn('Cohere v2 chat failed, retrying with v1 chat payload', {
+        message: v2Error.message,
+        status: v2Error.response?.status,
+      });
 
-    const aiHtml = response?.data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+      const v1BaseUrl = envConfig.cohereApiBaseUrl.replace(/\/v2\/?$/, '/v1');
+      response = await axios.post(
+        `${v1BaseUrl}/chat`,
+        {
+          model: envConfig.cohereModel,
+          preamble: systemPrompt,
+          message: userPrompt,
+          temperature: 0.7,
+        },
+        requestConfig
+      );
+      aiHtml = parseCohereText(response?.data);
+    }
+
+    // Clean common model wrappers like markdown code fences
+    if (aiHtml) {
+      aiHtml = aiHtml
+        .replace(/^```html\s*/i, '')
+        .replace(/^```\s*/i, '')
+        .replace(/\s*```$/i, '');
+      aiHtml = normalizeToAllowedHtml(aiHtml);
+    }
 
     if (!aiHtml) {
       logger.warn('AI returned empty content. Falling back to template.');
-      return { description: fallbackHtml, source: 'template' };
+      return { description: fallbackHtml, source: 'template', reason: 'cohere_empty_response' };
     }
 
-    return { description: aiHtml, source: 'ai' };
+    return { description: aiHtml, source: 'ai', provider: 'cohere' };
   } catch (error) {
     logger.error('Job description generation failed, using template fallback', {
       message: error.message,
       status: error.response?.status,
+      responseData: error.response?.data,
     });
-    return { description: fallbackHtml, source: 'template' };
+    return {
+      description: fallbackHtml,
+      source: 'template',
+      reason: `cohere_request_failed_${error.response?.status || 'unknown'}`,
+    };
   }
 };
 

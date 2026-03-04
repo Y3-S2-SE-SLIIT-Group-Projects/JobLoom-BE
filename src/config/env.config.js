@@ -121,24 +121,24 @@ class EnvConfig {
   }
 
   /**
-   * Gemini API key for job description generation
+   * Cohere API key for job description generation
    */
-  get geminiApiKey() {
-    return process.env.GEMINI_API_KEY;
+  get cohereApiKey() {
+    return process.env.COHERE_API_KEY;
   }
 
   /**
-   * Gemini API base URL
+   * Cohere API base URL
    */
-  get geminiApiBaseUrl() {
-    return process.env.GEMINI_API_BASE_URL || 'https://generativelanguage.googleapis.com/v1beta';
+  get cohereApiBaseUrl() {
+    return process.env.COHERE_API_BASE_URL || 'https://api.cohere.com/v2';
   }
 
   /**
-   * Gemini model for job description generation
+   * Cohere model for job description generation
    */
-  get geminiModel() {
-    return process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+  get cohereModel() {
+    return process.env.COHERE_MODEL || 'command-r-plus';
   }
 
   /**
@@ -156,9 +156,9 @@ class EnvConfig {
       textLkApiBaseUrl: this.textLkApiBaseUrl,
       textLkApiToken: this.textLkApiToken ? '***' : undefined,
       textLkSenderId: this.textLkSenderId,
-      geminiApiKey: this.geminiApiKey ? '***' : undefined,
-      geminiApiBaseUrl: this.geminiApiBaseUrl,
-      geminiModel: this.geminiModel,
+      cohereApiKey: this.cohereApiKey ? '***' : undefined,
+      cohereApiBaseUrl: this.cohereApiBaseUrl,
+      cohereModel: this.cohereModel,
     };
   }
 }
