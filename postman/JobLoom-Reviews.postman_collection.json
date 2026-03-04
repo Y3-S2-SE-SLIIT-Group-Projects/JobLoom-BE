@@ -1,0 +1,498 @@
+{
+  "info": {
+    "name": "JobLoom – Review & Rating API",
+    "_postman_id": "jobloom-reviews-v1",
+    "description": "Full test suite for the Review & Rating module.\n\n**Setup – fill in Collection Variables before running:**\n- `baseUrl`      – API base (default: http://localhost:3000/api)\n- `authToken`    – JWT from login (Bearer token)\n- `reviewerId`   – MongoDB ObjectId of the logged-in user (reviewer)\n- `revieweeId`   – MongoDB ObjectId of the user being reviewed\n- `jobId`        – MongoDB ObjectId of the job both users worked on\n- `reviewId`     – Auto-set after 'Create Review' runs (or paste manually)\n\n**Run order:** Public READ → Create → Update → Report → Delete",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000/api", "type": "string" },
+    { "key": "authToken", "value": "PASTE_YOUR_JWT_HERE", "type": "string" },
+    { "key": "reviewerId", "value": "PASTE_REVIEWER_USER_ID", "type": "string" },
+    { "key": "revieweeId", "value": "PASTE_REVIEWEE_USER_ID", "type": "string" },
+    { "key": "jobId", "value": "PASTE_JOB_ID", "type": "string" },
+    {
+      "key": "reviewId",
+      "value": "",
+      "type": "string",
+      "description": "Auto-filled after Create Review"
+    }
+  ],
+
+  "item": [
+    {
+      "name": "1. Public – Read",
+      "item": [
+        {
+          "name": "Get Reviews for User (all)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reviews/user/{{revieweeId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", "user", "{{revieweeId}}"],
+              "query": [
+                {
+                  "key": "reviewerType",
+                  "value": "",
+                  "disabled": true,
+                  "description": "job_seeker | employer"
+                },
+                {
+                  "key": "sort",
+                  "value": "-createdAt",
+                  "disabled": true,
+                  "description": "-createdAt | rating | -rating"
+                },
+                { "key": "page", "value": "1", "disabled": true },
+                { "key": "limit", "value": "10", "disabled": true }
+              ]
+            },
+            "description": "GET /api/reviews/user/:userId\nPublic. Returns paginated reviews for a user.\nTurn on query params to filter/sort/paginate."
+          },
+          "response": []
+        },
+
+        {
+          "name": "Get Reviews for User – filtered (job_seeker only)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reviews/user/{{revieweeId}}?reviewerType=job_seeker&sort=-createdAt&page=1&limit=5",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", "user", "{{revieweeId}}"],
+              "query": [
+                { "key": "reviewerType", "value": "job_seeker" },
+                { "key": "sort", "value": "-createdAt" },
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "5" }
+              ]
+            },
+            "description": "Same endpoint with reviewerType=job_seeker filter."
+          },
+          "response": []
+        },
+
+        {
+          "name": "Get Reviews for Employer (alias)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reviews/employer/{{revieweeId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", "employer", "{{revieweeId}}"]
+            },
+            "description": "GET /api/reviews/employer/:employerId\nAlias – always returns reviews where reviewerType=job_seeker."
+          },
+          "response": []
+        },
+
+        {
+          "name": "Get Reviews for Job Seeker (alias)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reviews/jobseeker/{{revieweeId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", "jobseeker", "{{revieweeId}}"]
+            },
+            "description": "GET /api/reviews/jobseeker/:jobSeekerId\nAlias – always returns reviews where reviewerType=employer."
+          },
+          "response": []
+        },
+
+        {
+          "name": "Get Reviews for Job",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reviews/job/{{jobId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", "job", "{{jobId}}"]
+            },
+            "description": "GET /api/reviews/job/:jobId\nPublic. Returns all reviews tied to a specific job."
+          },
+          "response": []
+        },
+
+        {
+          "name": "Get Rating Stats for User",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reviews/stats/{{revieweeId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", "stats", "{{revieweeId}}"]
+            },
+            "description": "GET /api/reviews/stats/:userId\nPublic. Returns averageRating, totalReviews, and ratingDistribution (1–5 breakdown)."
+          },
+          "response": []
+        },
+
+        {
+          "name": "Get Single Review by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reviews/{{reviewId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", "{{reviewId}}"]
+            },
+            "description": "GET /api/reviews/:id\nPublic. Requires reviewId variable (auto-set after Create, or paste manually)."
+          },
+          "response": []
+        }
+      ]
+    },
+
+    {
+      "name": "2. Protected – Write",
+      "item": [
+        {
+          "name": "Create Review (overall rating only)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.data && json.data.review && json.data.review._id) {",
+                  "  pm.collectionVariables.set('reviewId', json.data.review._id);",
+                  "  console.log('✅ reviewId saved:', json.data.review._id);",
+                  "} else {",
+                  "  console.warn('⚠️  Could not extract reviewId from response');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"revieweeId\":   \"{{revieweeId}}\",\n  \"jobId\":        \"{{jobId}}\",\n  \"reviewerType\": \"job_seeker\",\n  \"rating\":       4,\n  \"comment\":      \"Great employer, very professional and paid on time.\",\n  \"wouldRecommend\": true\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reviews",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews"]
+            },
+            "description": "POST /api/reviews  [Protected]\nRequires: revieweeId, jobId, reviewerType, rating.\nOn success the test script auto-saves reviewId to collection variable."
+          },
+          "response": []
+        },
+
+        {
+          "name": "Create Review (with detailed criteria)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.data && json.data.review && json.data.review._id) {",
+                  "  pm.collectionVariables.set('reviewId', json.data.review._id);",
+                  "  console.log('✅ reviewId saved:', json.data.review._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"revieweeId\":    \"{{revieweeId}}\",\n  \"jobId\":         \"{{jobId}}\",\n  \"reviewerType\":  \"job_seeker\",\n  \"rating\":        4,\n  \"comment\":       \"Excellent work quality and always on time.\",\n  \"workQuality\":   5,\n  \"communication\": 4,\n  \"punctuality\":   4,\n  \"wouldRecommend\": true\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reviews",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews"]
+            },
+            "description": "Same as above but includes detailed criteria.\nThe BE will auto-calculate a weighted rating from workQuality + communication + punctuality.\nUse paymentOnTime instead of punctuality when reviewerType=employer."
+          },
+          "response": []
+        },
+
+        {
+          "name": "Create Review – as Employer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.data && json.data.review && json.data.review._id) {",
+                  "  pm.collectionVariables.set('reviewId', json.data.review._id);",
+                  "  console.log('✅ reviewId saved:', json.data.review._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"revieweeId\":    \"{{revieweeId}}\",\n  \"jobId\":         \"{{jobId}}\",\n  \"reviewerType\":  \"employer\",\n  \"rating\":        5,\n  \"comment\":       \"Very skilled and reliable worker.\",\n  \"workQuality\":   5,\n  \"communication\": 5,\n  \"paymentOnTime\": 5,\n  \"wouldRecommend\": true\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reviews",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews"]
+            },
+            "description": "Employer reviewing a job seeker.\nNote: uses paymentOnTime (not punctuality) as the employer-specific criterion."
+          },
+          "response": []
+        },
+
+        {
+          "name": "Update Review",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\":  5,\n  \"comment\": \"Updated: even better than I first thought!\",\n  \"wouldRecommend\": true\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reviews/{{reviewId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", "{{reviewId}}"]
+            },
+            "description": "PUT /api/reviews/:id  [Protected]\nOnly the review author can update it.\nAll fields are optional – send only what you want to change."
+          },
+          "response": []
+        }
+      ]
+    },
+
+    {
+      "name": "3. Protected – Report & Delete",
+      "item": [
+        {
+          "name": "Report a Review",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"This review contains false and misleading information about the job.\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reviews/{{reviewId}}/report",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", "{{reviewId}}", "report"]
+            },
+            "description": "POST /api/reviews/:id/report  [Protected]\nReason must be between 10–500 characters.\nLogs the userId + reason in the review's reportedBy array."
+          },
+          "response": []
+        },
+
+        {
+          "name": "Delete Review (soft delete)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{authToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/reviews/{{reviewId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", "{{reviewId}}"]
+            },
+            "description": "DELETE /api/reviews/:id  [Protected]\nSoft delete – sets isDeleted=true. Review author OR admin can delete.\nThe review disappears from all public GET endpoints."
+          },
+          "response": []
+        }
+      ]
+    },
+
+    {
+      "name": "4. Validation – Error Cases",
+      "item": [
+        {
+          "name": "❌ Create – missing required fields",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"comment\": \"No rating, no revieweeId, no jobId\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reviews",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews"]
+            },
+            "description": "Expected: 422 Unprocessable Entity with validation errors for revieweeId, jobId, reviewerType, rating."
+          },
+          "response": []
+        },
+
+        {
+          "name": "❌ Create – rating out of range",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"revieweeId\":   \"{{revieweeId}}\",\n  \"jobId\":        \"{{jobId}}\",\n  \"reviewerType\": \"job_seeker\",\n  \"rating\":       10\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reviews",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews"]
+            },
+            "description": "Expected: 422 – Rating must be between 1 and 5."
+          },
+          "response": []
+        },
+
+        {
+          "name": "❌ Create – self review",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"revieweeId\":   \"{{reviewerId}}\",\n  \"jobId\":        \"{{jobId}}\",\n  \"reviewerType\": \"job_seeker\",\n  \"rating\":       5\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reviews",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews"]
+            },
+            "description": "revieweeId = reviewerId (same person).\nExpected: 400 – You cannot review yourself."
+          },
+          "response": []
+        },
+
+        {
+          "name": "❌ Create – no auth token",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"revieweeId\":   \"{{revieweeId}}\",\n  \"jobId\":        \"{{jobId}}\",\n  \"reviewerType\": \"job_seeker\",\n  \"rating\":       4\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reviews",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews"]
+            },
+            "description": "No Authorization header.\nExpected: 401 – Unauthorized."
+          },
+          "response": []
+        },
+
+        {
+          "name": "❌ Create – duplicate review",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"revieweeId\":   \"{{revieweeId}}\",\n  \"jobId\":        \"{{jobId}}\",\n  \"reviewerType\": \"job_seeker\",\n  \"rating\":       3,\n  \"comment\":      \"Trying to submit a second review for the same job.\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reviews",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews"]
+            },
+            "description": "Run after a successful Create.\nExpected: 409 – You have already reviewed this user for this job."
+          },
+          "response": []
+        },
+
+        {
+          "name": "❌ Report – reason too short",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Bad\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reviews/{{reviewId}}/report",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", "{{reviewId}}", "report"]
+            },
+            "description": "Reason is only 3 chars, minimum is 10.\nExpected: 422 – Reason must be between 10 and 500 characters."
+          },
+          "response": []
+        },
+
+        {
+          "name": "❌ Get – invalid MongoId",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reviews/not-a-valid-id",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", "not-a-valid-id"]
+            },
+            "description": "Expected: 422 – Invalid review ID."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

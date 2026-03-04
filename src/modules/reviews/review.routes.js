@@ -55,6 +55,16 @@ router.get(
 );
 
 /**
+ * Get reviews SENT BY a user (where user is the reviewer)
+ */
+router.get(
+  '/sent/:userId',
+  reviewValidation.getUserReviewsValidation,
+  validate,
+  reviewController.getSentReviews
+);
+
+/**
  * Get reviews for a job seeker (alias)
  */
 router.get(

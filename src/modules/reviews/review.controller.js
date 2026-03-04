@@ -148,12 +148,30 @@ export const getJobSeekerReviews = asyncHandler(async (req, res) => {
   sendSuccess(res, 'Job seeker reviews retrieved successfully', result);
 });
 
+/**
+ * @route   GET /api/reviews/sent/:userId
+ * @desc    Get reviews SENT BY a user (reviews they wrote)
+ * @access  Public
+ */
+export const getSentReviews = asyncHandler(async (req, res) => {
+  const filters = {
+    page: req.query.page,
+    limit: req.query.limit,
+    sort: req.query.sort,
+  };
+
+  const result = await reviewService.getSentReviewsForUser(req.params.userId, filters);
+
+  sendSuccess(res, 'Sent reviews retrieved successfully', result);
+});
+
 export default {
   createReview,
   getReviewById,
   updateReview,
   deleteReview,
   getReviewsForUser,
+  getSentReviews,
   getReviewsForJob,
   getUserRatingStats,
   reportReview,
