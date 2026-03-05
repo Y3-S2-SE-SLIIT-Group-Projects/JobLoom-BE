@@ -43,12 +43,17 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    profileImagePublicId: {
+      type: String,
+      default: '',
+    },
     cvs: [
       {
         name: { type: String, required: true },
         url: { type: String, required: true },
         isPrimary: { type: Boolean, default: false },
         createdAt: { type: Date, default: Date.now },
+        public_id: { type: String },
       },
     ],
     skills: {

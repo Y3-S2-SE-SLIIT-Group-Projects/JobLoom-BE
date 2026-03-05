@@ -20,19 +20,48 @@ const logFormat = winston.format.combine(
   winston.format.json()
 );
 
-// Console format with colors for development
+const c = {
+  reset: '\x1b[0m',
+  bold: '\x1b[1m',
+  dim: '\x1b[2m',
+  red: '\x1b[31m',
+  green: '\x1b[32m',
+  yellow: '\x1b[33m',
+  blue: '\x1b[34m',
+  magenta: '\x1b[35m',
+  cyan: '\x1b[36m',
+  white: '\x1b[37m',
+};
+
+const levelColor = {
+  error: c.bold + c.red,
+  warn: c.bold + c.yellow,
+  info: c.bold + c.green,
+  http: c.bold + c.magenta,
+  verbose: c.bold + c.cyan,
+  debug: c.bold + c.blue,
+};
+
+const pid = process.pid;
+
 const consoleFormat = winston.format.combine(
-  winston.format.colorize(),
-  winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-  winston.format.printf(({ timestamp, level, message, ...metadata }) => {
-    let msg = `${timestamp} [${level}]: ${message}`;
+  winston.format.timestamp({ format: 'MM/DD/YYYY, hh:mm:ss A' }),
+  winston.format.printf(({ timestamp, level, message, stack, ...metadata }) => {
+    const color = levelColor[level] ?? c.white;
+    const label = level.toUpperCase().padEnd(7);
+    const meta = Object.keys(metadata).length
+      ? ` ${c.dim}${JSON.stringify(metadata)}${c.reset}`
+      : '';
+    const body = stack ? `${message}\n${c.dim}${stack}${c.reset}` : message;
 
-    // Add metadata if present
-    if (Object.keys(metadata).length > 0) {
-      msg += ` ${JSON.stringify(metadata)}`;
-    }
-
-    return msg;
+    return (
+      `${c.bold}${c.green}[JobLoom]${c.reset} ` +
+      `${c.yellow}${pid}${c.reset}  ${c.dim}-${c.reset} ` +
+      `${c.white}${timestamp}${c.reset}  ` +
+      `${color}${label}${c.reset} ` +
+      `${c.white}${body}${c.reset}` +
+      meta
+    );
   })
 );
 
