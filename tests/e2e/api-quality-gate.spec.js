@@ -6,13 +6,13 @@ test.describe('API Documentation (headless Chromium)', () => {
   test('Swagger UI loads and shows JobLoom title', async ({ page }) => {
     await page.goto('/api-docs');
     await expect(page).toHaveTitle(/swagger/i);
-    await expect(page.locator('.swagger-ui')).toBeVisible();
+    await expect(page.locator('section.swagger-ui')).toBeVisible();
   });
 
   test('Swagger UI exposes the health endpoint section', async ({ page }) => {
     await page.goto('/api-docs');
     await page.waitForSelector('.swagger-ui .opblock', { timeout: 10_000 });
-    const pageText = await page.locator('.swagger-ui').innerText();
+    const pageText = await page.locator('section.swagger-ui').innerText();
     expect(pageText.toLowerCase()).toContain('health');
   });
 

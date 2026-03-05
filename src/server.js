@@ -52,6 +52,7 @@ app.use(httpInterceptor);
 /**
  * Configure API Documentation
  */
+app.get('/api-docs/swagger.json', (_req, res) => res.json(swaggerSpec));
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, { explorer: true }));
 
 /**
