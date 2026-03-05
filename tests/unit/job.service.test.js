@@ -81,6 +81,7 @@ const mockJobModel = MockJob;
 const makeWhereChain = (value) => {
   const chain = {
     where: jest.fn().mockReturnThis(),
+    populate: jest.fn().mockImplementation(() => Promise.resolve(value)),
     then: (resolve, reject) => Promise.resolve(value).then(resolve, reject),
     catch: (fn) => Promise.resolve(value).catch(fn),
   };
@@ -97,6 +98,7 @@ mockJobModel.find.mockImplementation(() => {
     skip: jest.fn().mockReturnThis(),
     limit: jest.fn().mockResolvedValue([]),
     where: jest.fn().mockReturnThis(),
+    populate: jest.fn().mockResolvedValue([]),
   };
   return chain;
 });
@@ -226,7 +228,13 @@ describe('Job Service — Unit Tests', () => {
       const result = await getJobById(jobId.toString());
 
       expect(mockJobModel.findById).toHaveBeenCalledWith(jobId.toString());
-      expect(result).toBe(job);
+      expect(result).toMatchObject({
+        _id: job._id,
+        title: job.title,
+        category: job.category,
+        status: job.status,
+        isActive: job.isActive,
+      });
     });
 
     test('should throw 404 when job is not found', async () => {
@@ -261,7 +269,8 @@ describe('Job Service — Unit Tests', () => {
       const chainMock = {
         sort: jest.fn().mockReturnThis(),
         skip: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockResolvedValue([]),
+        limit: jest.fn().mockReturnThis(),
+        populate: jest.fn().mockResolvedValue([]),
       };
       mockJobModel.find.mockReturnValue(chainMock);
       mockJobModel.countDocuments.mockResolvedValue(0);
@@ -272,7 +281,8 @@ describe('Job Service — Unit Tests', () => {
       const chainMock = {
         sort: jest.fn().mockReturnThis(),
         skip: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockResolvedValue(jobs),
+        limit: jest.fn().mockReturnThis(),
+        populate: jest.fn().mockResolvedValue(jobs),
       };
       mockJobModel.find.mockReturnValue(chainMock);
       mockJobModel.countDocuments.mockResolvedValue(2);
@@ -336,7 +346,8 @@ describe('Job Service — Unit Tests', () => {
       const chainMock = {
         sort: jest.fn().mockReturnThis(),
         skip: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockResolvedValue([]),
+        limit: jest.fn().mockReturnThis(),
+        populate: jest.fn().mockResolvedValue([]),
       };
       mockJobModel.find.mockReturnValue(chainMock);
       mockJobModel.countDocuments.mockResolvedValue(45);
@@ -353,7 +364,8 @@ describe('Job Service — Unit Tests', () => {
       const chainMock = {
         sort: jest.fn().mockReturnThis(),
         skip: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockResolvedValue([]),
+        limit: jest.fn().mockReturnThis(),
+        populate: jest.fn().mockResolvedValue([]),
       };
       mockJobModel.find.mockReturnValue(chainMock);
       mockJobModel.countDocuments.mockResolvedValue(20);
@@ -372,7 +384,8 @@ describe('Job Service — Unit Tests', () => {
     test('should return only active jobs by default', async () => {
       const jobs = [makeJob()];
       const chainMock = {
-        sort: jest.fn().mockResolvedValue(jobs),
+        sort: jest.fn().mockReturnThis(),
+        populate: jest.fn().mockResolvedValue(jobs),
       };
       mockJobModel.find.mockReturnValue(chainMock);
 
@@ -385,7 +398,10 @@ describe('Job Service — Unit Tests', () => {
     });
 
     test('should include inactive jobs when includeInactive is true', async () => {
-      const chainMock = { sort: jest.fn().mockResolvedValue([]) };
+      const chainMock = {
+        sort: jest.fn().mockReturnThis(),
+        populate: jest.fn().mockResolvedValue([]),
+      };
       mockJobModel.find.mockReturnValue(chainMock);
 
       await getJobsByEmployer(employerId.toString(), { includeInactive: true });
@@ -396,7 +412,10 @@ describe('Job Service — Unit Tests', () => {
     });
 
     test('should filter by status when provided', async () => {
-      const chainMock = { sort: jest.fn().mockResolvedValue([]) };
+      const chainMock = {
+        sort: jest.fn().mockReturnThis(),
+        populate: jest.fn().mockResolvedValue([]),
+      };
       mockJobModel.find.mockReturnValue(chainMock);
 
       await getJobsByEmployer(employerId.toString(), { status: 'closed' });
@@ -411,7 +430,9 @@ describe('Job Service — Unit Tests', () => {
   describe('getNearbyJobs', () => {
     test('should return nearby jobs for valid coordinates', async () => {
       const jobs = [makeJob()];
-      mockJobModel.findNearby.mockResolvedValue(jobs);
+      mockJobModel.findNearby.mockImplementation(() => ({
+        populate: jest.fn().mockResolvedValue(jobs),
+      }));
 
       const result = await getNearbyJobs(80.635, 7.2906, 50);
 
@@ -462,7 +483,9 @@ describe('Job Service — Unit Tests', () => {
     });
 
     test('should use default 50km radius when not specified', async () => {
-      mockJobModel.findNearby.mockResolvedValue([]);
+      mockJobModel.findNearby.mockImplementation(() => ({
+        populate: jest.fn().mockResolvedValue([]),
+      }));
 
       await getNearbyJobs(80.635, 7.2906);
 
