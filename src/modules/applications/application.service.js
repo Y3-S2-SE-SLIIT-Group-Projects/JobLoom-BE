@@ -1,5 +1,6 @@
 import Application from './application.model.js';
 import Job from '../jobs/job.model.js';
+import User from '../users/user.model.js';
 import HttpException from '../../models/http-exception.js';
 
 /**
@@ -27,7 +28,7 @@ const STATUS_TRANSITIONS = {
  * @returns {Object} Created application
  */
 export const applyForJob = async (jobSeekerId, applicationData) => {
-  const { jobId, coverLetter, resumeUrl } = applicationData;
+  const { jobId, coverLetter, resumeUrl, cvId } = applicationData;
 
   // Validate: the Job exists
   const job = await Job.findById(jobId);
@@ -45,14 +46,28 @@ export const applyForJob = async (jobSeekerId, applicationData) => {
     throw new HttpException(400, 'You cannot apply to your own job posting');
   }
 
+  // Resolve CV from the user's profile if cvId is provided
+  let resolvedResumeUrl = resumeUrl;
+  if (cvId) {
+    const user = await User.findById(jobSeekerId).select('cvs');
+    if (!user) {
+      throw new HttpException(404, 'User not found');
+    }
+    const selectedCv = user.cvs.id(cvId);
+    if (!selectedCv) {
+      throw new HttpException(404, 'Selected CV not found in your profile');
+    }
+    resolvedResumeUrl = selectedCv.url;
+  }
+
   // Create the application
   try {
     const application = await Application.create({
       jobId,
       jobSeekerId,
-      employerId: job.employerId, // Auto-populate from Job document
+      employerId: job.employerId,
       coverLetter,
-      resumeUrl,
+      resumeUrl: resolvedResumeUrl,
       status: 'pending',
     });
 

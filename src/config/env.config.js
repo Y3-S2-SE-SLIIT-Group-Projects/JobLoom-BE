@@ -120,6 +120,26 @@ class EnvConfig {
     return process.env.TEXT_LK_SENDER_ID || 'JobLoom';
   }
 
+  get calendlyClientId() {
+    return process.env.CALENDLY_CLIENT_ID;
+  }
+
+  get calendlyClientSecret() {
+    return process.env.CALENDLY_CLIENT_SECRET;
+  }
+
+  get calendlyRedirectUri() {
+    return process.env.CALENDLY_REDIRECT_URI || 'http://localhost:5173/auth/calendly/callback';
+  }
+
+  get calendlyWebhookSigningKey() {
+    return process.env.CALENDLY_WEBHOOK_SIGNING_KEY;
+  }
+
+  get calendlyWebhookUrl() {
+    return process.env.CALENDLY_WEBHOOK_URL;
+  }
+
   /**
    * Get all configuration as an object
    */
