@@ -318,6 +318,46 @@ export const reportReview = async (reviewId, reportData) => {
   };
 };
 
+/**
+ * Get reviews SENT by a user (where the user is the reviewer)
+ * @param {ObjectId} userId - Reviewer's user ID
+ * @param {Object} filters - page, limit, sort
+ * @returns {Object} { reviews, pagination }
+ */
+export const getSentReviewsForUser = async (userId, filters = {}) => {
+  const { page = 1, limit = 20, sort = '-createdAt' } = filters;
+
+  const criteria = {
+    reviewerId: userId,
+    isDeleted: false,
+  };
+
+  const skip = (parseInt(page) - 1) * parseInt(limit);
+
+  const [reviews, total] = await Promise.all([
+    reviewRepository.findReviews(criteria, {
+      populate: [
+        { path: 'revieweeId', select: 'firstName lastName email role' },
+        { path: 'jobId', select: 'title' },
+      ],
+      sort,
+      skip,
+      limit: parseInt(limit),
+    }),
+    reviewRepository.countReviews(criteria),
+  ]);
+
+  return {
+    reviews,
+    pagination: {
+      total,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      pages: Math.ceil(total / parseInt(limit)),
+    },
+  };
+};
+
 export default {
   canUserReview,
   createReview,
@@ -325,6 +365,7 @@ export default {
   updateReview,
   deleteReview,
   getReviewsForUser,
+  getSentReviewsForUser,
   getReviewsForJob,
   getUserRatingStats,
   reportReview,
