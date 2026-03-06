@@ -1,0 +1,62 @@
+name: Playwright API Quality Gate
+
+on:
+  pull_request:
+    branches: [main, staging, develop]
+  push:
+    branches: [main, develop]
+
+jobs:
+  playwright:
+    name: API Quality Gate
+    runs-on: ubuntu-latest
+
+    services:
+      mongodb:
+        image: mongo:7
+        ports:
+          - 27017:27017
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium browser
+        run: npx playwright install chromium --with-deps
+
+      - name: Start API server
+        run: node src/server.js &
+        env:
+          NODE_ENV: development
+          PORT: 3000
+          MONGODB_URI: mongodb://localhost:27017/jobloom_test
+
+      - name: Wait for server to be ready
+        run: npx wait-on http://localhost:3000/healthz --timeout 30000
+
+      - name: Run Playwright API tests
+        run: npx playwright test
+
+      - name: Upload HTML report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-api-report
+          path: playwright-report/
+          retention-days: 14
+
+      - name: Upload traces on failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-api-traces
+          path: test-results/
+          retention-days: 7
