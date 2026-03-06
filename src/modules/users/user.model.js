@@ -92,6 +92,13 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    calendly: {
+      accessToken: { type: String, default: null },
+      refreshToken: { type: String, default: null },
+      tokenExpiresAt: { type: Date, default: null },
+      calendlyUri: { type: String, default: null },
+      schedulingUrl: { type: String, default: null },
+    },
   },
   {
     timestamps: true,
