@@ -14,12 +14,12 @@ const getHelmetConfig = () => {
     contentSecurityPolicy: envConfig.isProduction
       ? undefined // Use default CSP in production
       : {
-        // Relaxed CSP for development
-        directives: {
-          defaultSrc: ["'self'"],
-          styleSrc: ["'self'", "'unsafe-inline'"],
+          // Relaxed CSP for development
+          directives: {
+            defaultSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+          },
         },
-      },
     crossOriginEmbedderPolicy: !envConfig.isDevelopment,
     crossOriginResourcePolicy: false,
   };
