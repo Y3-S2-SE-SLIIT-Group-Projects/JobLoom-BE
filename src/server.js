@@ -18,6 +18,8 @@ import configureRequestLogger from './middleware/request-logger.middleware.js';
 import httpInterceptor from './middleware/http-interceptor.js';
 import { errorHandler, notFoundHandler } from './middleware/error-handler.js';
 
+import uploadRoute from './routes/upload.route.js';
+
 // Import routes
 import healthRoutes from './routes/health.routes.js';
 import routes from './routes/index.js';
@@ -38,7 +40,6 @@ let isShuttingDown = false;
  * Create Express Application
  */
 const app = express();
-
 /**
  * Configure Middleware
  */
@@ -51,6 +52,7 @@ app.use(httpInterceptor);
 /**
  * Configure API Documentation
  */
+app.get('/api-docs/swagger.json', (_req, res) => res.json(swaggerSpec));
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, { explorer: true }));
 
 /**
@@ -63,6 +65,7 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
  */
 app.use('/', healthRoutes); // Health check routes (/, /health, /healthz, /ready)
 app.use('/api', routes); // API routes
+app.use('/api/upload', uploadRoute);
 
 /**
  * Error Handlers (must be last)

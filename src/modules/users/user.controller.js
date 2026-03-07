@@ -1,5 +1,7 @@
+import fs from 'fs';
 import userService from './user.service.js';
 import { validationResult } from 'express-validator';
+import { uploadToCloudinary } from '../../services/upload.service.js';
 
 /**
  * @desc    Register a new user
@@ -156,17 +158,45 @@ export const updateUserProfile = async (req, res) => {
   // Handle file uploads if present
   const updates = { ...req.body };
   if (req.files) {
+    // Upload CVs
     if (req.files.cv) {
-      updates.newCVs = req.files.cv.map((file) => ({
-        name: file.originalname || 'CV',
-        // Normalize to forward slashes and make path relative to project root for URL serving
-        url: file.path.replace(/\\/g, '/').replace(/^.*\/uploads\//, 'uploads/'),
-      }));
+      const uploadedCVs = [];
+
+      for (const file of req.files.cv) {
+        try {
+          const result = await uploadToCloudinary(file.path, 'jobloom/cvs', file.mimetype);
+
+          uploadedCVs.push({
+            name: file.originalname || 'CV',
+            url: result.url,
+          });
+        } finally {
+          try {
+            fs.unlinkSync(file.path);
+          } catch {
+            // ignore
+          }
+        }
+      }
+
+      updates.newCVs = uploadedCVs;
     }
+
+    // Upload Profile Image
     if (req.files.profileImage) {
-      updates.profileImage = req.files.profileImage[0].path
-        .replace(/\\/g, '/')
-        .replace(/^.*\/uploads\//, 'uploads/');
+      const file = req.files.profileImage[0];
+
+      try {
+        const result = await uploadToCloudinary(file.path, 'jobloom/profile_images', file.mimetype);
+
+        updates.profileImage = result.url;
+      } finally {
+        try {
+          fs.unlinkSync(file.path);
+        } catch {
+          // ignore
+        }
+      }
     }
   }
 
