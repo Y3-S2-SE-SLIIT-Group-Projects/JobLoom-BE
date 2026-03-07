@@ -141,6 +141,27 @@ class EnvConfig {
   }
 
   /**
+   * Cohere API key for job description generation
+   */
+  get cohereApiKey() {
+    return process.env.COHERE_API_KEY;
+  }
+
+  /**
+   * Cohere API base URL
+   */
+  get cohereApiBaseUrl() {
+    return process.env.COHERE_API_BASE_URL || 'https://api.cohere.com/v2';
+  }
+
+  /**
+   * Cohere model for job description generation
+   */
+  get cohereModel() {
+    return process.env.COHERE_MODEL || 'command-r-plus';
+  }
+
+  /**
    * Get all configuration as an object
    */
   getAll() {
@@ -155,6 +176,9 @@ class EnvConfig {
       textLkApiBaseUrl: this.textLkApiBaseUrl,
       textLkApiToken: this.textLkApiToken ? '***' : undefined,
       textLkSenderId: this.textLkSenderId,
+      cohereApiKey: this.cohereApiKey ? '***' : undefined,
+      cohereApiBaseUrl: this.cohereApiBaseUrl,
+      cohereModel: this.cohereModel,
     };
   }
 }
