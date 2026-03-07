@@ -1,0 +1,992 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "name": "JobLoom — Reviews API (Viva Demo)",
+    "description": "Complete Review & Rating API collection for JobLoom.\n\n**HOW TO USE:**\n1. Run **Step 1 - Login** first to get fresh tokens (auto-saved to variables)\n2. Then run any other step in order\n3. Create reviews in Step 3 before using Step 4–7\n\n**All variables are pre-filled from the seed data.**\nRe-seed anytime: `node scripts/seed-review-test.js`",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3008/api",
+      "type": "string",
+      "description": "Backend API base URL"
+    },
+    {
+      "key": "employerToken",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5YTUzY2E0YzU1ZDY4ODdmYzE2ZDRjZCIsImlhdCI6MTc3MjQzNjY0NSwiZXhwIjoxNzczMDQxNDQ1fQ.VdxsQYaVt6sId4r5z3xOC3060a0EI6XRaaDSjqI2FjU",
+      "type": "string",
+      "description": "JWT token for the employer user (auto-updated by Step 1 login)"
+    },
+    {
+      "key": "seekerToken",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5YTUzY2E0YzU1ZDY4ODdmYzE2ZDRjZiIsImlhdCI6MTc3MjQzNjY0NSwiZXhwIjoxNzczMDQxNDQ1fQ.cuiW67J0AK3lMOwgXEUkhqF7Z-n18x9pqetL26Jnyxw",
+      "type": "string",
+      "description": "JWT token for the job seeker user (auto-updated by Step 1 login)"
+    },
+    {
+      "key": "employerId",
+      "value": "69a53ca4c55d6887fc16d4cd",
+      "type": "string",
+      "description": "MongoDB ObjectId of the seed employer user"
+    },
+    {
+      "key": "jobSeekerId",
+      "value": "69a53ca4c55d6887fc16d4cf",
+      "type": "string",
+      "description": "MongoDB ObjectId of the seed job seeker user"
+    },
+    {
+      "key": "job1Id",
+      "value": "69a53ca5c55d6887fc16d4d2",
+      "type": "string",
+      "description": "MongoDB ObjectId of seed Job 1 (Frontend Developer)"
+    },
+    {
+      "key": "job2Id",
+      "value": "69a53ca5c55d6887fc16d4d4",
+      "type": "string",
+      "description": "MongoDB ObjectId of seed Job 2 (Backend Developer)"
+    },
+    {
+      "key": "app1Id",
+      "value": "69a53ca5c55d6887fc16d4d7",
+      "type": "string",
+      "description": "MongoDB ObjectId of seed Application 1 (accepted)"
+    },
+    {
+      "key": "app2Id",
+      "value": "69a53ca5c55d6887fc16d4db",
+      "type": "string",
+      "description": "MongoDB ObjectId of seed Application 2 (accepted)"
+    },
+    {
+      "key": "reviewId",
+      "value": "",
+      "type": "string",
+      "description": "Auto-set when Seeker creates a review (Step 3). Used in Steps 4–7."
+    },
+    {
+      "key": "review2Id",
+      "value": "",
+      "type": "string",
+      "description": "Auto-set when Employer creates a review (Step 3). Used in Steps 4–7."
+    }
+  ],
+  "item": [
+    {
+      "name": "🔐 Step 1 — Authentication",
+      "description": "Login as both users to get fresh JWT tokens. Tokens are auto-saved to collection variables `employerToken` and `seekerToken`.",
+      "item": [
+        {
+          "name": "Login as Employer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Token received', () => pm.expect(res.data).to.have.property('token'));",
+                  "",
+                  "if (res.data && res.data.token) {",
+                  "    pm.collectionVariables.set('employerToken', res.data.token);",
+                  "    console.log('✅ employerToken saved');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"seed.employer@jobloom.test\",\n  \"password\": \"Test1234\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "login"]
+            },
+            "description": "Login as the seed employer. Token auto-saved to `{{employerToken}}`."
+          }
+        },
+        {
+          "name": "Login as Job Seeker",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Token received', () => pm.expect(res.data).to.have.property('token'));",
+                  "",
+                  "if (res.data && res.data.token) {",
+                  "    pm.collectionVariables.set('seekerToken', res.data.token);",
+                  "    console.log('✅ seekerToken saved');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"seed.seeker@jobloom.test\",\n  \"password\": \"Test1234\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "login"]
+            },
+            "description": "Login as the seed job seeker. Token auto-saved to `{{seekerToken}}`."
+          }
+        }
+      ]
+    },
+    {
+      "name": "📖 Step 2 — Public Read APIs (No Auth)",
+      "description": "All these endpoints are public — no authentication required. Great for showing read-only review data.",
+      "item": [
+        {
+          "name": "Get All Reviews for Employer (by userId)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Response has reviews array', () => {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(res.data).to.have.property('reviews');",
+                  "    pm.expect(res.data.reviews).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reviews/user/{{employerId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", "user", "{{employerId}}"]
+            },
+            "description": "Get all reviews where the employer is the reviewee (reviews written about them). Public endpoint."
+          }
+        },
+        {
+          "name": "Get All Reviews for Job Seeker (by userId)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Response has reviews array', () => {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(res.data).to.have.property('reviews');",
+                  "    pm.expect(res.data.reviews).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reviews/user/{{jobSeekerId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", "user", "{{jobSeekerId}}"]
+            },
+            "description": "Get all reviews where the job seeker is the reviewee. Public endpoint."
+          }
+        },
+        {
+          "name": "Get Reviews for Employer (alias route)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Response has reviews', () => {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(res.data).to.have.property('reviews');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reviews/employer/{{employerId}}?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", "employer", "{{employerId}}"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" }
+              ]
+            },
+            "description": "Shortcut route — returns reviews written BY job seekers ABOUT this employer. Supports pagination."
+          }
+        },
+        {
+          "name": "Get Reviews for Job Seeker (alias route)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Response has reviews', () => {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(res.data).to.have.property('reviews');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reviews/jobseeker/{{jobSeekerId}}?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", "jobseeker", "{{jobSeekerId}}"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" }
+              ]
+            },
+            "description": "Shortcut route — returns reviews written BY employers ABOUT this job seeker. Supports pagination."
+          }
+        },
+        {
+          "name": "Get Reviews for a Job",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Response has reviews and count', () => {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(res.data).to.have.property('reviews');",
+                  "    pm.expect(res.data).to.have.property('count');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reviews/job/{{job1Id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", "job", "{{job1Id}}"]
+            },
+            "description": "Get all reviews linked to a specific job. Returns both employer→seeker and seeker→employer reviews for that job."
+          }
+        },
+        {
+          "name": "Get Rating Statistics for Employer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Response has stats', () => {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(res.data).to.have.property('stats');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reviews/stats/{{employerId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", "stats", "{{employerId}}"]
+            },
+            "description": "Get aggregated rating statistics for the employer: average rating, total reviews, breakdown per rating value."
+          }
+        },
+        {
+          "name": "Get Rating Statistics for Job Seeker",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Response has stats', () => {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(res.data).to.have.property('stats');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reviews/stats/{{jobSeekerId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", "stats", "{{jobSeekerId}}"]
+            },
+            "description": "Get aggregated rating statistics for the job seeker."
+          }
+        },
+        {
+          "name": "Get Reviews (Filtered by reviewerType)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Reviews match the reviewerType filter', () => {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(res.data).to.have.property('reviews');",
+                  "    const reviews = res.data.reviews;",
+                  "    reviews.forEach(r => {",
+                  "        pm.expect(r.reviewerType).to.equal('job_seeker');",
+                  "    });",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reviews/user/{{employerId}}?reviewerType=job_seeker&page=1&limit=5",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", "user", "{{employerId}}"],
+              "query": [
+                { "key": "reviewerType", "value": "job_seeker" },
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "5" }
+              ]
+            },
+            "description": "Filter reviews by `reviewerType`. Useful to show only job-seeker-written reviews about an employer."
+          }
+        }
+      ]
+    },
+    {
+      "name": "✏️ Step 3 — Create Reviews (Auth Required)",
+      "description": "Both users write reviews about each other after completing a job together. Each review saves an ID to a collection variable for use in later steps.",
+      "item": [
+        {
+          "name": "Seeker Reviews Employer (Job 1)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('Review created with _id', () => {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(res.data).to.have.property('review');",
+                  "    pm.expect(res.data.review).to.have.property('_id');",
+                  "});",
+                  "",
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data.review && res.data.review._id) {",
+                  "    pm.collectionVariables.set('reviewId', res.data.review._id);",
+                  "    console.log('✅ reviewId saved:', res.data.review._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{seekerToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"revieweeId\": \"{{employerId}}\",\n  \"jobId\": \"{{job1Id}}\",\n  \"reviewerType\": \"job_seeker\",\n  \"rating\": 4.5,\n  \"comment\": \"Great employer! Very professional and paid on time. The work environment was excellent.\",\n  \"paymentOnTime\": 5,\n  \"communication\": 4,\n  \"wouldRecommend\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reviews",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews"]
+            },
+            "description": "Job seeker writes a review about the employer for Job 1. Uses `seekerToken` for auth. Review ID is auto-saved to `{{reviewId}}`."
+          }
+        },
+        {
+          "name": "Employer Reviews Job Seeker (Job 1)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('Review created with _id', () => {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(res.data).to.have.property('review');",
+                  "    pm.expect(res.data.review).to.have.property('_id');",
+                  "});",
+                  "",
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data.review && res.data.review._id) {",
+                  "    pm.collectionVariables.set('review2Id', res.data.review._id);",
+                  "    console.log('✅ review2Id saved:', res.data.review._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{employerToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"revieweeId\": \"{{jobSeekerId}}\",\n  \"jobId\": \"{{job1Id}}\",\n  \"reviewerType\": \"employer\",\n  \"rating\": 5,\n  \"comment\": \"Exceptional candidate! Delivered high-quality work ahead of schedule. Highly recommended.\",\n  \"workQuality\": 5,\n  \"communication\": 5,\n  \"punctuality\": 5,\n  \"wouldRecommend\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reviews",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews"]
+            },
+            "description": "Employer writes a review about the job seeker for Job 1. Uses `employerToken` for auth. Review ID auto-saved to `{{review2Id}}`."
+          }
+        },
+        {
+          "name": "Seeker Reviews Employer (Job 2)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('Review created with _id', () => {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(res.data.review).to.have.property('_id');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{seekerToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"revieweeId\": \"{{employerId}}\",\n  \"jobId\": \"{{job2Id}}\",\n  \"reviewerType\": \"job_seeker\",\n  \"rating\": 3.5,\n  \"comment\": \"Decent employer but communication could be improved. Payment was on time.\",\n  \"paymentOnTime\": 4,\n  \"communication\": 3,\n  \"wouldRecommend\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reviews",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews"]
+            },
+            "description": "Job seeker writes a second review about the employer for Job 2."
+          }
+        },
+        {
+          "name": "Employer Reviews Job Seeker (Job 2)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('Review created with _id', () => {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(res.data.review).to.have.property('_id');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{employerToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"revieweeId\": \"{{jobSeekerId}}\",\n  \"jobId\": \"{{job2Id}}\",\n  \"reviewerType\": \"employer\",\n  \"rating\": 4,\n  \"comment\": \"Good work overall. Some improvements needed in communication but skills are solid.\",\n  \"workQuality\": 4,\n  \"communication\": 3,\n  \"punctuality\": 4,\n  \"wouldRecommend\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reviews",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews"]
+            },
+            "description": "Employer writes a second review about the job seeker for Job 2."
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔍 Step 4 — Get Review by ID",
+      "description": "Retrieve a specific review using the ID saved from Step 3.",
+      "item": [
+        {
+          "name": "Get Seeker's Review by ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Review has expected fields', () => {",
+                  "    const res = pm.response.json();",
+                  "    const review = res.data.review;",
+                  "    pm.expect(review).to.have.property('_id');",
+                  "    pm.expect(review).to.have.property('rating');",
+                  "    pm.expect(review).to.have.property('comment');",
+                  "    pm.expect(review).to.have.property('reviewerType');",
+                  "    pm.expect(review._id).to.equal(pm.collectionVariables.get('reviewId'));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reviews/{{reviewId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", "{{reviewId}}"]
+            },
+            "description": "Fetch a single review by its MongoDB ID. Uses `{{reviewId}}` set in Step 3. Public endpoint — no auth needed."
+          }
+        },
+        {
+          "name": "Get Employer's Review by ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Review is by employer', () => {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(res.data.review.reviewerType).to.equal('employer');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reviews/{{review2Id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", "{{review2Id}}"]
+            },
+            "description": "Fetch the employer's review by ID. Uses `{{review2Id}}` set in Step 3."
+          }
+        }
+      ]
+    },
+    {
+      "name": "✏️ Step 5 — Update Review",
+      "description": "Update an existing review. Only the original reviewer can update their own review.",
+      "item": [
+        {
+          "name": "Seeker Updates Their Review",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Review was updated', () => {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(res.data.review.rating).to.equal(4);",
+                  "    pm.expect(res.data.review.comment).to.include('Updated:');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{seekerToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 4,\n  \"comment\": \"Updated: After reflection, still a good employer. Minor payment delay but resolved quickly.\",\n  \"paymentOnTime\": 4,\n  \"communication\": 4,\n  \"wouldRecommend\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reviews/{{reviewId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", "{{reviewId}}"]
+            },
+            "description": "Job seeker updates their own review. Auth required — must be the original reviewer. Uses `{{reviewId}}` and `{{seekerToken}}`."
+          }
+        }
+      ]
+    },
+    {
+      "name": "🚩 Step 6 — Report a Review",
+      "description": "Report an inappropriate or fraudulent review. Any authenticated user can report.",
+      "item": [
+        {
+          "name": "Employer Reports Seeker's Review",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Report acknowledged', () => {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(res.message).to.include('reported');",
+                  "    pm.expect(res.data).to.have.property('reportCount');",
+                  "    pm.expect(res.data.reportCount).to.be.at.least(1);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{employerToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"This review contains inaccurate information and is potentially defamatory.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reviews/{{reviewId}}/report",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", "{{reviewId}}", "report"]
+            },
+            "description": "Employer reports the seeker's review. Auth required. Returns updated `reportCount`. Uses `{{reviewId}}` and `{{employerToken}}`."
+          }
+        },
+        {
+          "name": "Seeker Reports Employer's Review",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Report count returned', () => {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(res.data.reportCount).to.be.at.least(1);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{seekerToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"This review appears to be fabricated and does not reflect the actual work experience.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reviews/{{review2Id}}/report",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", "{{review2Id}}", "report"]
+            },
+            "description": "Job seeker reports the employer's review. Uses `{{review2Id}}` and `{{seekerToken}}`."
+          }
+        }
+      ]
+    },
+    {
+      "name": "🗑️ Step 7 — Delete Review",
+      "description": "Soft-delete a review. Only the original reviewer (or admin) can delete. The review is marked as deleted, not permanently removed.",
+      "item": [
+        {
+          "name": "Seeker Deletes Their Review",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Deletion confirmed', () => {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(res.message).to.include('deleted');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{seekerToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/reviews/{{reviewId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", "{{reviewId}}"]
+            },
+            "description": "Job seeker deletes their own review (soft delete). Auth required. Uses `{{reviewId}}` and `{{seekerToken}}`."
+          }
+        },
+        {
+          "name": "Verify Review is Deleted (GET should 404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 404 Not Found (review deleted)', () => pm.response.to.have.status(404));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reviews/{{reviewId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", "{{reviewId}}"]
+            },
+            "description": "After deletion, fetching the same review ID should return 404. Demonstrates soft-delete behaviour."
+          }
+        }
+      ]
+    },
+    {
+      "name": "❌ Step 8 — Error & Validation Cases",
+      "description": "Demonstrates how the API handles bad input, unauthorized access, and invalid IDs. Useful for showing robust error handling in a viva.",
+      "item": [
+        {
+          "name": "Create Review — Missing Auth (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 401 Unauthorized', () => pm.response.to.have.status(401));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"revieweeId\": \"{{employerId}}\",\n  \"jobId\": \"{{job1Id}}\",\n  \"reviewerType\": \"job_seeker\",\n  \"rating\": 4\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reviews",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews"]
+            },
+            "description": "No Authorization header. Should return 401 Unauthorized."
+          }
+        },
+        {
+          "name": "Create Review — Invalid Rating (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('Error message about rating', () => {",
+                  "    const res = pm.response.json();",
+                  "    const errorText = JSON.stringify(res).toLowerCase();",
+                  "    pm.expect(errorText).to.include('rating');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{seekerToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"revieweeId\": \"{{employerId}}\",\n  \"jobId\": \"{{job1Id}}\",\n  \"reviewerType\": \"job_seeker\",\n  \"rating\": 10\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reviews",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews"]
+            },
+            "description": "Rating of 10 is invalid (must be 1–5). Should return 400 with validation error."
+          }
+        },
+        {
+          "name": "Create Review — Missing Required Fields (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400 Bad Request', () => pm.response.to.have.status(400));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{seekerToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"comment\": \"Great employer!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reviews",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews"]
+            },
+            "description": "Missing all required fields: revieweeId, jobId, reviewerType, rating. Should return 400."
+          }
+        },
+        {
+          "name": "Get Review — Non-existent ID (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["pm.test('Status 404 Not Found', () => pm.response.to.have.status(404));"],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reviews/000000000000000000000000",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", "000000000000000000000000"]
+            },
+            "description": "Valid MongoDB ObjectId format but no document exists. Should return 404 Not Found."
+          }
+        },
+        {
+          "name": "Get Review — Invalid ID Format (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400 Bad Request', () => pm.response.to.have.status(400));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reviews/not-a-valid-id",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", "not-a-valid-id"]
+            },
+            "description": "Invalid MongoDB ObjectId format. Should return 400 Bad Request."
+          }
+        },
+        {
+          "name": "Update Review — Wrong User (403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 403 Forbidden', () => pm.response.to.have.status(403));",
+                  "pm.test('Error message about authorization', () => {",
+                  "    const res = pm.response.json();",
+                  "    const errorText = JSON.stringify(res).toLowerCase();",
+                  "    pm.expect(errorText).to.satisfy(t => t.includes('not authorized') || t.includes('forbidden') || t.includes('permission'));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{seekerToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 1,\n  \"comment\": \"Trying to tamper with someone else's review!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reviews/{{review2Id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", "{{review2Id}}"]
+            },
+            "description": "`{{review2Id}}` was created BY the employer. The job seeker (seekerToken) tries to update it — should be rejected with 403 Forbidden, proving only the original author can edit their review."
+          }
+        }
+      ]
+    }
+  ]
+}

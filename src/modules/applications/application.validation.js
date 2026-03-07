@@ -22,6 +22,8 @@ export const applyForJobValidation = [
     .trim()
     .isURL({ protocols: ['http', 'https'], require_protocol: true })
     .withMessage('Resume URL must be a valid HTTP or HTTPS URL'),
+
+  body('cvId').optional().isMongoId().withMessage('Invalid CV ID'),
 ];
 
 export const withdrawApplicationValidation = [

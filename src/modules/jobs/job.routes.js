@@ -45,6 +45,15 @@ router.get('/:id', jobValidation.getJobValidation, validate, jobController.getJo
  * Protected route - Employer only
  */
 router.post(
+  '/generate-description',
+  protect,
+  authorize('employer'),
+  jobValidation.generateJobDescriptionValidation,
+  validate,
+  jobController.generateJobDescription
+);
+
+router.post(
   '/',
   protect,
   authorize('employer'),

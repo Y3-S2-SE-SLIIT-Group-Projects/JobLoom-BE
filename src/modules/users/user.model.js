@@ -68,6 +68,27 @@ const userSchema = new mongoose.Schema(
         description: { type: String },
       },
     ],
+    // Employer specific fields
+    companyName: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    companyWebsite: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    companyDescription: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    industry: {
+      type: String,
+      trim: true,
+      default: '',
+    },
     isVerified: {
       type: Boolean,
       default: false,
@@ -91,6 +112,13 @@ const userSchema = new mongoose.Schema(
     passwordResetOtpExpires: {
       type: Date,
       default: null,
+    },
+    calendly: {
+      accessToken: { type: String, default: null },
+      refreshToken: { type: String, default: null },
+      tokenExpiresAt: { type: Date, default: null },
+      calendlyUri: { type: String, default: null },
+      schedulingUrl: { type: String, default: null },
     },
   },
   {

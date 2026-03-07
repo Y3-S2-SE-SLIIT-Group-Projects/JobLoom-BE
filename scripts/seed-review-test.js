@@ -22,7 +22,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
 // ─── config ───────────────────────────────────────────────────────────────────
-const MONGO_URI = process.env.MONGODB_URI;
+const MONGO_URI =
+  'mongodb+srv://dilzhanYapa:7XAgqjH6GKBfoiLZ@jobloom.lzhfyie.mongodb.net/?appName=JobLoom';
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
 const JWT_TTL = process.env.JWT_EXPIRES_IN || '7d';
 const PORT = process.env.PORT || 3008;
@@ -69,6 +70,7 @@ const jobSchema = new Schema(
     experienceRequired: { type: String, default: 'none' },
     positions: { type: Number, default: 1 },
     status: { type: String, default: 'open' },
+    isActive: { type: Boolean, default: true },
   },
   { timestamps: true }
 );
@@ -151,6 +153,7 @@ async function seed() {
     experienceRequired: 'beginner',
     positions: 5,
     status: 'open',
+    isActive: true,
   });
 
   const job2 = await Job.create({
@@ -168,6 +171,7 @@ async function seed() {
     experienceRequired: 'none',
     positions: 3,
     status: 'open',
+    isActive: true,
   });
 
   console.log('\n✅ Jobs created');
@@ -222,6 +226,10 @@ async function seed() {
 
   const collection = buildCollection(IDS);
   fs.writeFileSync(OUT_FILE, JSON.stringify(collection, null, 2));
+
+  // Write a simple IDs file for test-reviews.py
+  const IDS_FILE = path.join(__dirname, 'seed-ids.json');
+  fs.writeFileSync(IDS_FILE, JSON.stringify(IDS, null, 2));
 
   console.log('\n✅ Postman collection written to:');
   console.log('  ', OUT_FILE);

@@ -52,7 +52,13 @@ app.use(httpInterceptor);
 /**
  * Configure API Documentation
  */
+app.get('/api-docs/swagger.json', (_req, res) => res.json(swaggerSpec));
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, { explorer: true }));
+
+/**
+ * Serve Uploaded Files (profile images, CVs)
+ */
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 /**
  * Configure Routes
