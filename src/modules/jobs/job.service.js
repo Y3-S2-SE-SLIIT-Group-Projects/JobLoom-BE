@@ -10,7 +10,7 @@ import envConfig from '../../config/env.config.js';
  * Business logic for job management
  */
 
-const EMPLOYER_POPULATE_SELECT = 'firstName lastName email companyName';
+const EMPLOYER_POPULATE_SELECT = 'firstName lastName email companyName profileImage';
 
 const buildEmployerCompanyName = (employer) => {
   if (!employer || typeof employer !== 'object') return 'Unknown employer';
