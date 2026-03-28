@@ -223,33 +223,40 @@ export const aggregateReviews = async (userId) => {
       },
     },
     {
+      // Ratings can be decimals (e.g. 4.3); map them to nearest star bucket for distribution bars.
+      $project: {
+        roundedRating: { $round: ['$rating', 0] },
+        rating: 1,
+      },
+    },
+    {
       $group: {
         _id: null,
         averageRating: { $avg: '$rating' },
         totalReviews: { $sum: 1 },
         rating5: {
           $sum: {
-            $cond: [{ $eq: ['$rating', 5] }, 1, 0],
+            $cond: [{ $eq: ['$roundedRating', 5] }, 1, 0],
           },
         },
         rating4: {
           $sum: {
-            $cond: [{ $eq: ['$rating', 4] }, 1, 0],
+            $cond: [{ $eq: ['$roundedRating', 4] }, 1, 0],
           },
         },
         rating3: {
           $sum: {
-            $cond: [{ $eq: ['$rating', 3] }, 1, 0],
+            $cond: [{ $eq: ['$roundedRating', 3] }, 1, 0],
           },
         },
         rating2: {
           $sum: {
-            $cond: [{ $eq: ['$rating', 2] }, 1, 0],
+            $cond: [{ $eq: ['$roundedRating', 2] }, 1, 0],
           },
         },
         rating1: {
           $sum: {
-            $cond: [{ $eq: ['$rating', 1] }, 1, 0],
+            $cond: [{ $eq: ['$roundedRating', 1] }, 1, 0],
           },
         },
       },

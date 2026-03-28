@@ -26,6 +26,29 @@ describe('Review Routes - Integration Tests', () => {
   let jobId;
   let applicationId;
 
+  const createUserAndLogin = async ({ firstName, lastName, email, role, phone }) => {
+    const password = 'password123';
+
+    const user = await User.create({
+      firstName,
+      lastName,
+      email,
+      password,
+      role,
+      phone,
+      location: {
+        village: 'Test Village',
+        district: 'Colombo',
+        province: 'Western',
+      },
+      isVerified: true,
+    });
+
+    const loginRes = await request(app).post('/api/users/login').send({ email, password });
+
+    return { token: loginRes.body.token, userId: user._id.toString() };
+  };
+
   // Setup: Connect to test database
   beforeAll(async () => {
     const testDbUri = process.env.MONGO_TEST_URI || 'mongodb://localhost:27017/jobloom-test';
@@ -52,29 +75,28 @@ describe('Review Routes - Integration Tests', () => {
     await Review.deleteMany({});
     await RatingStats.deleteMany({});
 
-    // Register employer
-    const employerRes = await request(app).post('/api/users/register').send({
+    // Create verified users and login
+    const employer = await createUserAndLogin({
       firstName: 'John',
       lastName: 'Employer',
       email: 'employer@test.com',
-      password: 'password123',
       role: 'employer',
+      phone: '94770000011',
     });
 
-    employerToken = employerRes.body.data.token;
-    employerId = employerRes.body.data.user._id;
+    employerToken = employer.token;
+    employerId = employer.userId;
 
-    // Register job seeker
-    const jobSeekerRes = await request(app).post('/api/users/register').send({
+    const jobSeeker = await createUserAndLogin({
       firstName: 'Jane',
       lastName: 'Worker',
       email: 'worker@test.com',
-      password: 'password123',
       role: 'job_seeker',
+      phone: '94770000012',
     });
 
-    jobSeekerToken = jobSeekerRes.body.data.token;
-    jobSeekerId = jobSeekerRes.body.data.user._id;
+    jobSeekerToken = jobSeeker.token;
+    jobSeekerId = jobSeeker.userId;
 
     // Create job
     const job = await Job.create({
@@ -192,6 +214,23 @@ describe('Review Routes - Integration Tests', () => {
       expect(res.status).toBe(400);
       expect(res.body.message).toContain('yourself');
     });
+
+    test('should derive reviewerType from authenticated role and ignore client-provided value', async () => {
+      const reviewData = {
+        revieweeId: employerId,
+        jobId,
+        reviewerType: 'employer',
+        rating: 5,
+      };
+
+      const res = await request(app)
+        .post('/api/reviews')
+        .set('Authorization', `Bearer ${jobSeekerToken}`)
+        .send(reviewData);
+
+      expect(res.status).toBe(201);
+      expect(res.body.data.review.reviewerType).toBe('job_seeker');
+    });
   });
 
   describe('GET /api/reviews/:id', () => {
@@ -221,7 +260,7 @@ describe('Review Routes - Integration Tests', () => {
   });
 
   describe('PUT /api/reviews/:id', () => {
-    test('should update own review within 7 days', async () => {
+    test('should update own review within 24 hours', async () => {
       // Create review
       const review = await Review.create({
         reviewerId: jobSeekerId,
@@ -267,6 +306,50 @@ describe('Review Routes - Integration Tests', () => {
 
       expect(res.status).toBe(403);
       expect(res.body.message).toContain('own reviews');
+    });
+
+    test('should fail to update own review after 24-hour window when not reported', async () => {
+      const review = await Review.create({
+        reviewerId: jobSeekerId,
+        revieweeId: employerId,
+        jobId,
+        reviewerType: 'job_seeker',
+        rating: 4,
+        createdAt: new Date(Date.now() - 48 * 60 * 60 * 1000),
+      });
+
+      const res = await request(app)
+        .put(`/api/reviews/${review._id}`)
+        .set('Authorization', `Bearer ${jobSeekerToken}`)
+        .send({ rating: 5 });
+
+      expect(res.status).toBe(403);
+      expect(res.body.message).toContain('within 24 hours');
+    });
+
+    test('should allow update after 24-hour window if review has been reported', async () => {
+      const review = await Review.create({
+        reviewerId: jobSeekerId,
+        revieweeId: employerId,
+        jobId,
+        reviewerType: 'job_seeker',
+        rating: 2,
+        comment: 'Old content',
+        createdAt: new Date(Date.now() - 48 * 60 * 60 * 1000),
+      });
+
+      await request(app)
+        .post(`/api/reviews/${review._id}/report`)
+        .set('Authorization', `Bearer ${employerToken}`)
+        .send({ reason: 'This is offensive and misleading content' });
+
+      const res = await request(app)
+        .put(`/api/reviews/${review._id}`)
+        .set('Authorization', `Bearer ${jobSeekerToken}`)
+        .send({ rating: 4, comment: 'Updated after report' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.review.rating).toBe(4);
     });
   });
 
@@ -360,6 +443,50 @@ describe('Review Routes - Integration Tests', () => {
       expect(res.body.data.stats).toHaveProperty('totalReviews');
       expect(res.body.data.stats).toHaveProperty('trustScore');
       expect(res.body.data.stats).toHaveProperty('badge');
+    });
+
+    test('should bucket decimal ratings into nearest star distribution', async () => {
+      await request(app)
+        .post('/api/reviews')
+        .set('Authorization', `Bearer ${jobSeekerToken}`)
+        .send({
+          revieweeId: employerId,
+          jobId,
+          rating: 4,
+          workQuality: 4,
+          communication: 5,
+        });
+
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      const res = await request(app).get(`/api/reviews/stats/${employerId}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.stats.averageRating).toBe(4.3);
+      expect(res.body.data.stats.totalReviews).toBe(1);
+      expect(res.body.data.stats.ratingDistribution['4']).toBe(1);
+      expect(res.body.data.stats.ratingDistribution['5']).toBe(0);
+    });
+  });
+
+  describe('GET /api/reviews/sent/:userId', () => {
+    test('should return reviews authored by the given user', async () => {
+      await Review.create({
+        reviewerId: jobSeekerId,
+        revieweeId: employerId,
+        jobId,
+        reviewerType: 'job_seeker',
+        rating: 5,
+      });
+
+      const res = await request(app).get(`/api/reviews/sent/${jobSeekerId}`);
+
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body.data.reviews)).toBe(true);
+      expect(res.body.data.reviews).toHaveLength(1);
+      const reviewerId =
+        res.body.data.reviews[0].reviewerId?._id || res.body.data.reviews[0].reviewerId;
+      expect(reviewerId.toString()).toBe(jobSeekerId.toString());
     });
   });
 
