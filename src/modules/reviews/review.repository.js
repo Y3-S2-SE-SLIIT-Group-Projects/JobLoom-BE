@@ -94,7 +94,7 @@ export const findReviews = async (criteria, options = {}) => {
  */
 export const updateReviewById = async (reviewId, updateData, options = {}) => {
   const updateOptions = {
-    new: true,
+    returnDocument: 'after',
     runValidators: true,
     ...options,
   };
@@ -116,7 +116,7 @@ export const updateReviewById = async (reviewId, updateData, options = {}) => {
  * @returns {Promise<Object|null>} Updated review or null
  */
 export const softDeleteReview = async (reviewId) => {
-  return await Review.findByIdAndUpdate(reviewId, { isDeleted: true }, { new: true });
+  return await Review.findByIdAndUpdate(reviewId, { isDeleted: true }, { returnDocument: 'after' });
 };
 
 /**

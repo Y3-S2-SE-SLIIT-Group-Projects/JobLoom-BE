@@ -104,7 +104,7 @@ export const updateUserRatingStats = async (userId, reviewRepository = null) => 
   // Update or create rating stats
   const updatedStats = await RatingStats.findOneAndUpdate({ userId }, updateData, {
     upsert: true,
-    new: true,
+    returnDocument: 'after',
   });
 
   return updatedStats;
