@@ -17,6 +17,8 @@ const storage = multer.diskStorage({
       subDir = 'cvs';
     } else if (file.fieldname === 'profileImage') {
       subDir = 'profiles';
+    } else if (file.fieldname === 'reviewImages') {
+      subDir = 'reviews';
     } else {
       subDir = 'others';
     }

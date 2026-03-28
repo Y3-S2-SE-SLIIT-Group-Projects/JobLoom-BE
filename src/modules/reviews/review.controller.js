@@ -14,9 +14,17 @@ import asyncHandler from '../../middleware/async-handler.js';
  * @access  Private (Job Seeker or Employer)
  */
 export const createReview = asyncHandler(async (req, res) => {
+  // Derive reviewerType from the authenticated user's role so it cannot be forged
+  const reviewerType = req.user.role === 'employer' ? 'employer' : 'job_seeker';
+
+  // Map any uploaded images to their public URL paths
+  const images = req.files?.length ? req.files.map((f) => `/uploads/reviews/${f.filename}`) : [];
+
   const reviewData = {
     ...req.body,
     reviewerId: req.user._id,
+    reviewerType,
+    images,
   };
 
   const review = await reviewService.createReview(reviewData);

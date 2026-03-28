@@ -75,6 +75,10 @@ const reviewSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    images: {
+      type: [String],
+      default: [],
+    },
     isDeleted: {
       type: Boolean,
       default: false,
