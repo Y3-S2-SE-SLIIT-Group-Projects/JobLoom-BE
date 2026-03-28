@@ -56,7 +56,7 @@ export const updateReview = asyncHandler(async (req, res) => {
 
 /**
  * @route   DELETE /api/reviews/:id
- * @desc    Delete own review (soft delete)
+ * @desc    Delete own review
  * @access  Private
  */
 export const deleteReview = asyncHandler(async (req, res) => {

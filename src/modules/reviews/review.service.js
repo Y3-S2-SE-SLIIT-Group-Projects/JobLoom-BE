@@ -208,7 +208,7 @@ export const updateReview = async (reviewId, userId, updateData) => {
 };
 
 /**
- * Delete a review (soft delete)
+ * Delete a review
  * @param {ObjectId} reviewId - Review ID
  * @param {ObjectId} userId - User ID
  * @param {boolean} isAdmin - Is user an admin
@@ -238,8 +238,7 @@ export const deleteReview = async (reviewId, userId, isAdmin = false) => {
     );
   }
 
-  // Soft delete using repository
-  await reviewRepository.softDeleteReview(reviewId);
+  await reviewRepository.hardDeleteReview(reviewId);
 
   return { message: 'Review deleted successfully' };
 };
