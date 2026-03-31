@@ -15,6 +15,22 @@ import {
  * Business logic for review operations
  */
 
+// ─── Edit/Delete permission window ────────────────────────────────────────────
+const EDIT_WINDOW_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+/**
+ * Determine whether a review may still be edited or deleted by its author.
+ * A review is modifiable if:
+ *   - It was submitted within the last 24 hours, OR
+ *   - It has been reported by at least one other user (reporter re-opens the window
+ *     so the author can correct/remove the flagged content).
+ */
+const canModifyReview = (review) => {
+  const withinWindow = Date.now() - new Date(review.createdAt).getTime() < EDIT_WINDOW_MS;
+  const hasReports = Array.isArray(review.reportedBy) && review.reportedBy.length > 0;
+  return withinWindow || hasReports;
+};
+
 /**
  * Check if user can review another user for a specific job
  * @param {ObjectId} reviewerId - ID of user giving review
@@ -142,16 +158,12 @@ export const updateReview = async (reviewId, userId, updateData) => {
     throw new HttpException(403, 'You can only edit your own reviews');
   }
 
-  // Check 7-day edit window
-  const daysSinceCreation = (Date.now() - review.createdAt.getTime()) / (1000 * 60 * 60 * 24);
-  if (daysSinceCreation > 7) {
-    throw new HttpException(403, 'Reviews can only be edited within 7 days of creation');
-  }
-
-  // Check 24-hour rating change window
-  const hoursSinceCreation = (Date.now() - review.createdAt.getTime()) / (1000 * 60 * 60);
-  if (hoursSinceCreation > 24 && updateData.rating && updateData.rating !== review.rating) {
-    throw new HttpException(403, 'Rating cannot be changed after 24 hours');
+  // Reviews can only be edited within the 24-hour window OR if they have been reported
+  if (!canModifyReview(review)) {
+    throw new HttpException(
+      403,
+      'Reviews can only be edited within 24 hours of submission. They can be re-opened for editing if they have been reported.'
+    );
   }
 
   // Allowed fields to update
@@ -196,7 +208,7 @@ export const updateReview = async (reviewId, userId, updateData) => {
 };
 
 /**
- * Delete a review (soft delete)
+ * Delete a review
  * @param {ObjectId} reviewId - Review ID
  * @param {ObjectId} userId - User ID
  * @param {boolean} isAdmin - Is user an admin
@@ -218,8 +230,15 @@ export const deleteReview = async (reviewId, userId, isAdmin = false) => {
     throw new HttpException(403, 'You can only delete your own reviews');
   }
 
-  // Soft delete using repository
-  await reviewRepository.softDeleteReview(reviewId);
+  // Reviews can only be deleted within the 24-hour window OR if they have been reported
+  if (!isAdmin && !canModifyReview(review)) {
+    throw new HttpException(
+      403,
+      'Reviews can only be deleted within 24 hours of submission. They can be re-opened for deletion if they have been reported.'
+    );
+  }
+
+  await reviewRepository.hardDeleteReview(reviewId);
 
   return { message: 'Review deleted successfully' };
 };
@@ -347,8 +366,17 @@ export const getSentReviewsForUser = async (userId, filters = {}) => {
     reviewRepository.countReviews(criteria),
   ]);
 
+  // Annotate each review with client-side edit/delete permission flags.
+  // Strip the raw reportedBy array so reporter identities are not leaked.
+  const reviewsWithPermissions = reviews.map((review) => {
+    const obj = review.toObject ? review.toObject() : { ...review };
+    const canModify = canModifyReview(review);
+    delete obj.reportedBy;
+    return { ...obj, canEdit: canModify, canDelete: canModify };
+  });
+
   return {
-    reviews,
+    reviews: reviewsWithPermissions,
     pagination: {
       total,
       page: parseInt(page),

@@ -3,6 +3,7 @@ import * as reviewController from './review.controller.js';
 import * as reviewValidation from './review.validation.js';
 import { protect } from '../../middleware/auth/authMiddleware.js';
 import { validate } from '../../middleware/validation.middleware.js';
+import upload from '../../middleware/uploads/fileUpload.js';
 
 const router = express.Router();
 
@@ -83,11 +84,12 @@ router.get('/:id', reviewValidation.getReviewValidation, validate, reviewControl
 // Protected routes (authentication required)
 
 /**
- * Create a new review
+ * Create a new review (supports up to 5 image attachments via reviewImages field)
  */
 router.post(
   '/',
   protect,
+  upload.array('reviewImages', 5),
   reviewValidation.createReviewValidation,
   validate,
   reviewController.createReview

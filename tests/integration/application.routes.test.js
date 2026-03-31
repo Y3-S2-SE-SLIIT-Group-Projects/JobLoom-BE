@@ -24,6 +24,29 @@ describe('Application Routes - Integration Tests', () => {
   let jobSeekerId;
   let jobId;
 
+  const createUserAndLogin = async ({ firstName, lastName, email, role, phone }) => {
+    const password = 'password123';
+
+    const user = await User.create({
+      firstName,
+      lastName,
+      email,
+      password,
+      role,
+      phone,
+      location: {
+        village: 'Test Village',
+        district: 'Colombo',
+        province: 'Western',
+      },
+      isVerified: true,
+    });
+
+    const loginRes = await request(app).post('/api/users/login').send({ email, password });
+
+    return { token: loginRes.body.token, userId: user._id.toString() };
+  };
+
   // ── Setup & teardown ─────────────────────────────────────────────
 
   beforeAll(async () => {
@@ -47,29 +70,28 @@ describe('Application Routes - Integration Tests', () => {
     await Application.deleteMany({});
     await Review.deleteMany({});
 
-    // Register employer
-    const employerRes = await request(app).post('/api/users/register').send({
+    // Create verified users and login
+    const employer = await createUserAndLogin({
       firstName: 'John',
       lastName: 'Employer',
       email: 'employer@test.com',
-      password: 'password123',
       role: 'employer',
+      phone: '94770000031',
     });
 
-    employerToken = employerRes.body.data.token;
-    employerId = employerRes.body.data.user._id;
+    employerToken = employer.token;
+    employerId = employer.userId;
 
-    // Register job seeker
-    const jobSeekerRes = await request(app).post('/api/users/register').send({
+    const jobSeeker = await createUserAndLogin({
       firstName: 'Jane',
       lastName: 'Worker',
       email: 'worker@test.com',
-      password: 'password123',
       role: 'job_seeker',
+      phone: '94770000032',
     });
 
-    jobSeekerToken = jobSeekerRes.body.data.token;
-    jobSeekerId = jobSeekerRes.body.data.user._id;
+    jobSeekerToken = jobSeeker.token;
+    jobSeekerId = jobSeeker.userId;
 
     // Create an open job directly in DB
     const job = await Job.create({
@@ -168,7 +190,7 @@ describe('Application Routes - Integration Tests', () => {
       const job2 = await Job.create({
         employerId,
         title: 'Second Job',
-        description: 'Another opportunity',
+        description: 'Another opportunity with enough detail for validation to pass.',
         status: 'open',
       });
 
@@ -202,9 +224,24 @@ describe('Application Routes - Integration Tests', () => {
     test('should respect page and limit params', async () => {
       // Create 3 applications
       const jobs = await Job.create([
-        { employerId, title: 'Job A', description: 'A', status: 'open' },
-        { employerId, title: 'Job B', description: 'B', status: 'open' },
-        { employerId, title: 'Job C', description: 'C', status: 'open' },
+        {
+          employerId,
+          title: 'Job A',
+          description: 'Detailed description for job A to satisfy schema validation rules.',
+          status: 'open',
+        },
+        {
+          employerId,
+          title: 'Job B',
+          description: 'Detailed description for job B to satisfy schema validation rules.',
+          status: 'open',
+        },
+        {
+          employerId,
+          title: 'Job C',
+          description: 'Detailed description for job C to satisfy schema validation rules.',
+          status: 'open',
+        },
       ]);
 
       await Application.create(
@@ -248,16 +285,15 @@ describe('Application Routes - Integration Tests', () => {
     });
 
     test('should return 403 when a different employer requests', async () => {
-      // Register a second employer
-      const otherRes = await request(app).post('/api/users/register').send({
+      const other = await createUserAndLogin({
         firstName: 'Other',
         lastName: 'Boss',
         email: 'other-employer@test.com',
-        password: 'password123',
         role: 'employer',
+        phone: '94770000033',
       });
 
-      const otherToken = otherRes.body.data.token;
+      const otherToken = other.token;
 
       const res = await request(app)
         .get(`/api/applications/job/${jobId}`)
@@ -347,15 +383,15 @@ describe('Application Routes - Integration Tests', () => {
     });
 
     test('should return 403 when a non-owner employer updates', async () => {
-      const otherRes = await request(app).post('/api/users/register').send({
+      const other = await createUserAndLogin({
         firstName: 'Other',
         lastName: 'Employer',
         email: 'other-emp@test.com',
-        password: 'password123',
         role: 'employer',
+        phone: '94770000034',
       });
 
-      const otherToken = otherRes.body.data.token;
+      const otherToken = other.token;
 
       const res = await request(app)
         .patch(`/api/applications/${applicationId}/status`)
@@ -429,16 +465,15 @@ describe('Application Routes - Integration Tests', () => {
     });
 
     test('should return 403 when another job seeker tries to withdraw', async () => {
-      // Register a second job seeker
-      const otherRes = await request(app).post('/api/users/register').send({
+      const other = await createUserAndLogin({
         firstName: 'Bob',
         lastName: 'Seeker',
         email: 'bob@test.com',
-        password: 'password123',
         role: 'job_seeker',
+        phone: '94770000035',
       });
 
-      const otherToken = otherRes.body.data.token;
+      const otherToken = other.token;
 
       const res = await request(app)
         .patch(`/api/applications/${applicationId}/withdraw`)
@@ -537,15 +572,15 @@ describe('Application Routes - Integration Tests', () => {
     });
 
     test('should return 403 for an unrelated user', async () => {
-      const otherRes = await request(app).post('/api/users/register').send({
+      const other = await createUserAndLogin({
         firstName: 'Other',
         lastName: 'Person',
         email: 'other@test.com',
-        password: 'password123',
         role: 'job_seeker',
+        phone: '94770000036',
       });
 
-      const otherToken = otherRes.body.data.token;
+      const otherToken = other.token;
 
       const res = await request(app)
         .get(`/api/applications/${applicationId}`)

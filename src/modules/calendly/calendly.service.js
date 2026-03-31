@@ -70,7 +70,7 @@ export const exchangeCodeAndConnect = async (userId, code, redirectUri, codeVeri
         schedulingUrl,
       },
     },
-    { new: true }
+    { returnDocument: 'after' }
   ).select('-password');
 
   return user;
@@ -124,7 +124,7 @@ export const disconnectCalendly = async (userId) => {
         schedulingUrl: null,
       },
     },
-    { new: true }
+    { returnDocument: 'after' }
   ).select('-password');
 };
 

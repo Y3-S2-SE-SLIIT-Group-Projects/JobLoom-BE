@@ -17,11 +17,8 @@ export const createReviewValidation = [
     .isMongoId()
     .withMessage('Invalid job ID'),
 
-  body('reviewerType')
-    .notEmpty()
-    .withMessage('Reviewer type is required')
-    .isIn(['job_seeker', 'employer'])
-    .withMessage('Reviewer type must be either job_seeker or employer'),
+  // reviewerType is derived server-side from req.user.role and cannot be set by the client
+  body('reviewerType').optional(),
 
   body('rating')
     .notEmpty()

@@ -10,45 +10,90 @@ import envConfig from './env.config.js';
 class Database {
   constructor() {
     this.isConnected = false;
+    this.hasEventListeners = false;
+  }
+
+  /**
+   * Sleep helper for retry backoff
+   */
+  sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Determine if a MongoDB connection error is transient/retryable
+   */
+  isRetryableConnectionError(error) {
+    const retryableCodes = ['ENOTFOUND', 'EAI_AGAIN', 'ETIMEDOUT', 'ECONNRESET', 'ECONNREFUSED'];
+    const message = (error?.message || '').toLowerCase();
+
+    return (
+      retryableCodes.includes(error?.code) ||
+      message.includes('enotfound') ||
+      message.includes('eai_again') ||
+      message.includes('getaddrinfo') ||
+      message.includes('querysrv') ||
+      message.includes('server selection timed out') ||
+      message.includes('timed out')
+    );
   }
 
   /**
    * Connect to MongoDB
    */
   async connect() {
-    try {
-      // Mongoose connection options
-      const options = {
-        maxPoolSize: 10,
-        serverSelectionTimeoutMS: 5000,
-        socketTimeoutMS: 45000,
-      };
+    // Mongoose connection options
+    const options = {
+      maxPoolSize: 10,
+      serverSelectionTimeoutMS: 10000,
+      socketTimeoutMS: 45000,
+    };
 
-      // Connect to MongoDB
-      await mongoose.connect(envConfig.mongodbUri, options);
+    const maxAttempts = envConfig.isProduction ? 10 : 6;
+    let attempt = 0;
+    let lastError;
 
-      this.isConnected = true;
-      logger.info('MongoDB connected successfully', {
-        database: mongoose.connection.name,
-        host: mongoose.connection.host,
-      });
+    while (attempt < maxAttempts) {
+      attempt += 1;
 
-      // Setup event listeners
-      this.setupEventListeners();
-    } catch (error) {
-      logger.error('MongoDB connection error:', {
-        message: error.message,
-        stack: error.stack,
-      });
+      try {
+        await mongoose.connect(envConfig.mongodbUri, options);
 
-      // Retry connection after 5 seconds in production
-      if (envConfig.isProduction) {
-        logger.info('Retrying MongoDB connection in 5 seconds...');
-        setTimeout(() => this.connect(), 5000);
-      } else {
-        throw error;
+        this.isConnected = true;
+        logger.info('MongoDB connected successfully', {
+          database: mongoose.connection.name,
+          host: mongoose.connection.host,
+          attempt,
+        });
+
+        if (!this.hasEventListeners) {
+          this.setupEventListeners();
+          this.hasEventListeners = true;
+        }
+
+        return;
+      } catch (error) {
+        lastError = error;
+        const shouldRetry = this.isRetryableConnectionError(error) && attempt < maxAttempts;
+
+        logger.error('MongoDB connection attempt failed:', {
+          attempt,
+          maxAttempts,
+          message: error.message,
+          code: error.code,
+        });
+
+        if (!shouldRetry) {
+          throw error;
+        }
+
+        const delayMs = Math.min(15000, 1000 * 2 ** (attempt - 1));
+        logger.warn(`Retrying MongoDB connection in ${Math.round(delayMs / 1000)} seconds...`);
+        await this.sleep(delayMs);
       }
     }
+
+    throw lastError;
   }
 
   /**
