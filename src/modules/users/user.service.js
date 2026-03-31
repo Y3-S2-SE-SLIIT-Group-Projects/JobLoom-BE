@@ -211,21 +211,28 @@ export const updateUserProfile = async (user, updates) => {
   user.skills = updates.skills || user.skills;
   user.experience = updates.experience || user.experience;
 
+  // Employer fields
+  user.companyName = updates.companyName || user.companyName;
+  user.companyWebsite = updates.companyWebsite || user.companyWebsite;
+  user.companyDescription = updates.companyDescription || user.companyDescription;
+  user.industry = updates.industry || user.industry;
+
   if (updates.password) {
     user.password = updates.password;
   }
 
   if (updates.profileImage) {
-    user.profileImage = updates.profileImage;
+    // Normalize path to use forward slashes
+    user.profileImage = updates.profileImage.replace(/\\/g, '/');
   }
 
   // Handle multiple CVs
   if (updates.newCVs) {
     // If user already has CVs, append new ones.
-    // If this is the first CV, make it primary.
     const isFirstCV = user.cvs.length === 0;
     const mappedCVs = updates.newCVs.map((cv, index) => ({
       ...cv,
+      url: cv.url.replace(/\\/g, '/'), // Normalize path
       isPrimary: isFirstCV && index === 0,
     }));
     user.cvs.push(...mappedCVs);
@@ -251,6 +258,15 @@ export const updateUserProfile = async (user, updates) => {
     lastName: updatedUser.lastName,
     email: updatedUser.email,
     role: updatedUser.role,
+    companyName: updatedUser.companyName,
+    companyWebsite: updatedUser.companyWebsite,
+    companyDescription: updatedUser.companyDescription,
+    industry: updatedUser.industry,
+    profileImage: updatedUser.profileImage,
+    cvs: updatedUser.cvs,
+    skills: updatedUser.skills,
+    experience: updatedUser.experience,
+    location: updatedUser.location,
     token: generateToken(updatedUser._id),
   };
 };

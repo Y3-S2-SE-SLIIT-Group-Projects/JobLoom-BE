@@ -34,6 +34,29 @@ describe('Job Routes — Integration Tests', () => {
   let otherEmployerId;
   let jobSeekerToken;
 
+  const createUserAndLogin = async ({ firstName, lastName, email, role, phone }) => {
+    const password = 'password123';
+
+    const user = await User.create({
+      firstName,
+      lastName,
+      email,
+      password,
+      role,
+      phone,
+      location: {
+        village: 'Test Village',
+        district: 'Colombo',
+        province: 'Western',
+      },
+      isVerified: true,
+    });
+
+    const loginRes = await request(app).post('/api/users/login').send({ email, password });
+
+    return { token: loginRes.body.token, userId: user._id.toString() };
+  };
+
   // ── Setup & teardown ──────────────────────────────────────────────
 
   beforeAll(async () => {
@@ -55,37 +78,35 @@ describe('Job Routes — Integration Tests', () => {
     await Job.deleteMany({});
     await Application.deleteMany({});
 
-    // Register primary employer
-    const employerRes = await request(app).post('/api/users/register').send({
+    // Create verified users and login
+    const employer = await createUserAndLogin({
       firstName: 'Kamal',
       lastName: 'Employer',
       email: 'employer@test.com',
-      password: 'password123',
       role: 'employer',
+      phone: '94770000021',
     });
-    employerToken = employerRes.body.data.token;
-    employerId = employerRes.body.data.user._id;
+    employerToken = employer.token;
+    employerId = employer.userId;
 
-    // Register second employer (to test authorization)
-    const otherEmployerRes = await request(app).post('/api/users/register').send({
+    const otherEmployer = await createUserAndLogin({
       firstName: 'Nimal',
       lastName: 'Boss',
       email: 'other-employer@test.com',
-      password: 'password123',
       role: 'employer',
+      phone: '94770000022',
     });
-    otherEmployerToken = otherEmployerRes.body.data.token;
-    otherEmployerId = otherEmployerRes.body.data.user._id;
+    otherEmployerToken = otherEmployer.token;
+    otherEmployerId = otherEmployer.userId;
 
-    // Register job seeker (to test role guards)
-    const seekerRes = await request(app).post('/api/users/register').send({
+    const seeker = await createUserAndLogin({
       firstName: 'Saman',
       lastName: 'Worker',
       email: 'worker@test.com',
-      password: 'password123',
       role: 'job_seeker',
+      phone: '94770000023',
     });
-    jobSeekerToken = seekerRes.body.data.token;
+    jobSeekerToken = seeker.token;
   });
 
   // ── POST /api/jobs ────────────────────────────────────────────────
@@ -171,8 +192,8 @@ describe('Job Routes — Integration Tests', () => {
         .set('Authorization', `Bearer ${employerToken}`)
         .send(jobWithBadCoords);
 
-      // Should succeed because service strips invalid coordinates
-      expect(res.status).toBe(201);
+      // Validation rejects empty coordinates arrays before service-level sanitization.
+      expect(res.status).toBe(400);
     });
   });
 
@@ -358,7 +379,10 @@ describe('Job Routes — Integration Tests', () => {
       expect(res.body.success).toBe(true);
       const jobs = res.body.data.jobs;
       // Should include only the 2 jobs owned by employerId
-      jobs.forEach((job) => expect(job.employerId).toBe(employerId));
+      jobs.forEach((job) => {
+        const ownerId = job.employerId?._id || job.employerId;
+        expect(ownerId.toString()).toBe(employerId.toString());
+      });
       expect(jobs.length).toBe(2);
     });
 

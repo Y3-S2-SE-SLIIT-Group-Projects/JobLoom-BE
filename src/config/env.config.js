@@ -120,6 +120,47 @@ class EnvConfig {
     return process.env.TEXT_LK_SENDER_ID || 'JobLoom';
   }
 
+  get calendlyClientId() {
+    return process.env.CALENDLY_CLIENT_ID;
+  }
+
+  get calendlyClientSecret() {
+    return process.env.CALENDLY_CLIENT_SECRET;
+  }
+
+  get calendlyRedirectUri() {
+    return process.env.CALENDLY_REDIRECT_URI || 'http://localhost:5173/auth/calendly/callback';
+  }
+
+  get calendlyWebhookSigningKey() {
+    return process.env.CALENDLY_WEBHOOK_SIGNING_KEY;
+  }
+
+  get calendlyWebhookUrl() {
+    return process.env.CALENDLY_WEBHOOK_URL;
+  }
+
+  /**
+   * Cohere API key for job description generation
+   */
+  get cohereApiKey() {
+    return process.env.COHERE_API_KEY;
+  }
+
+  /**
+   * Cohere API base URL
+   */
+  get cohereApiBaseUrl() {
+    return process.env.COHERE_API_BASE_URL || 'https://api.cohere.com/v2';
+  }
+
+  /**
+   * Cohere model for job description generation
+   */
+  get cohereModel() {
+    return process.env.COHERE_MODEL || 'command-r-plus';
+  }
+
   /**
    * Get all configuration as an object
    */
@@ -135,6 +176,9 @@ class EnvConfig {
       textLkApiBaseUrl: this.textLkApiBaseUrl,
       textLkApiToken: this.textLkApiToken ? '***' : undefined,
       textLkSenderId: this.textLkSenderId,
+      cohereApiKey: this.cohereApiKey ? '***' : undefined,
+      cohereApiBaseUrl: this.cohereApiBaseUrl,
+      cohereModel: this.cohereModel,
     };
   }
 }

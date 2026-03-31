@@ -14,9 +14,17 @@ import asyncHandler from '../../middleware/async-handler.js';
  * @access  Private (Job Seeker or Employer)
  */
 export const createReview = asyncHandler(async (req, res) => {
+  // Derive reviewerType from the authenticated user's role so it cannot be forged
+  const reviewerType = req.user.role === 'employer' ? 'employer' : 'job_seeker';
+
+  // Map any uploaded images to their public URL paths
+  const images = req.files?.length ? req.files.map((f) => `/uploads/reviews/${f.filename}`) : [];
+
   const reviewData = {
     ...req.body,
     reviewerId: req.user._id,
+    reviewerType,
+    images,
   };
 
   const review = await reviewService.createReview(reviewData);
@@ -48,7 +56,7 @@ export const updateReview = asyncHandler(async (req, res) => {
 
 /**
  * @route   DELETE /api/reviews/:id
- * @desc    Delete own review (soft delete)
+ * @desc    Delete own review
  * @access  Private
  */
 export const deleteReview = asyncHandler(async (req, res) => {
@@ -148,12 +156,30 @@ export const getJobSeekerReviews = asyncHandler(async (req, res) => {
   sendSuccess(res, 'Job seeker reviews retrieved successfully', result);
 });
 
+/**
+ * @route   GET /api/reviews/sent/:userId
+ * @desc    Get reviews SENT BY a user (reviews they wrote)
+ * @access  Public
+ */
+export const getSentReviews = asyncHandler(async (req, res) => {
+  const filters = {
+    page: req.query.page,
+    limit: req.query.limit,
+    sort: req.query.sort,
+  };
+
+  const result = await reviewService.getSentReviewsForUser(req.params.userId, filters);
+
+  sendSuccess(res, 'Sent reviews retrieved successfully', result);
+});
+
 export default {
   createReview,
   getReviewById,
   updateReview,
   deleteReview,
   getReviewsForUser,
+  getSentReviews,
   getReviewsForJob,
   getUserRatingStats,
   reportReview,

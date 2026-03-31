@@ -19,6 +19,11 @@ services:
       # MongoDB Atlas connection string from .env file
       MONGODB_URI: ${MONGODB_URI}
       LOG_LEVEL: debug
+      # Calendly OAuth (must be explicitly passed - .env is not copied into Docker image)
+      CALENDLY_CLIENT_ID: ${CALENDLY_CLIENT_ID}
+      CALENDLY_CLIENT_SECRET: ${CALENDLY_CLIENT_SECRET}
+      CALENDLY_REDIRECT_URI: ${CALENDLY_REDIRECT_URI:-http://localhost:5173/auth/calendly/callback}
+      CALENDLY_WEBHOOK_SIGNING_KEY: ${CALENDLY_WEBHOOK_SIGNING_KEY}
     env_file:
       - .env
     volumes:

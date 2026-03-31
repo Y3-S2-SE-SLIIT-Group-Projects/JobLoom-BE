@@ -1,5 +1,7 @@
+import fs from 'fs';
 import userService from './user.service.js';
 import { validationResult } from 'express-validator';
+import { uploadToCloudinary } from '../../services/upload.service.js';
 
 /**
  * @desc    Register a new user
@@ -156,13 +158,46 @@ export const updateUserProfile = async (req, res) => {
   // Handle file uploads if present
   const updates = { ...req.body };
   if (req.files) {
+    // Upload CVs
     if (req.files.cv) {
-      updates.newCVs = req.files.cv.map((file) => ({
-        name: file.originalname || 'CV',
-        url: file.path,
-      }));
+      const uploadedCVs = [];
+
+      for (const file of req.files.cv) {
+        try {
+          const result = await uploadToCloudinary(file.path, 'jobloom/cvs', file.mimetype);
+
+          uploadedCVs.push({
+            name: file.originalname || 'CV',
+            url: result.url,
+          });
+        } finally {
+          try {
+            fs.unlinkSync(file.path);
+          } catch {
+            // ignore
+          }
+        }
+      }
+
+      updates.newCVs = uploadedCVs;
     }
-    if (req.files.profileImage) updates.profileImage = req.files.profileImage[0].path;
+
+    // Upload Profile Image
+    if (req.files.profileImage) {
+      const file = req.files.profileImage[0];
+
+      try {
+        const result = await uploadToCloudinary(file.path, 'jobloom/profile_images', file.mimetype);
+
+        updates.profileImage = result.url;
+      } finally {
+        try {
+          fs.unlinkSync(file.path);
+        } catch {
+          // ignore
+        }
+      }
+    }
   }
 
   // Parse JSON strings if they are sent as strings (common with formdata)

@@ -21,6 +21,7 @@ const getHelmetConfig = () => {
           },
         },
     crossOriginEmbedderPolicy: !envConfig.isDevelopment,
+    crossOriginResourcePolicy: false,
   };
 };
 

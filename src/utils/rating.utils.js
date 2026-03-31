@@ -17,11 +17,29 @@
 export const calculateWeightedRating = (criteria) => {
   const ratings = [];
 
-  if (criteria.rating) ratings.push(criteria.rating);
-  if (criteria.workQuality) ratings.push(criteria.workQuality);
-  if (criteria.communication) ratings.push(criteria.communication);
-  if (criteria.punctuality) ratings.push(criteria.punctuality);
-  if (criteria.paymentOnTime) ratings.push(criteria.paymentOnTime);
+  const addRatingIfValid = (value) => {
+    if (value === undefined || value === null || value === '') {
+      return;
+    }
+
+    const normalized = Number(value);
+    if (!Number.isFinite(normalized)) {
+      return;
+    }
+
+    if (normalized < 1 || normalized > 5) {
+      return;
+    }
+
+    ratings.push(normalized);
+  };
+
+  // Normalize values because multipart/form-data submissions deliver numbers as strings.
+  addRatingIfValid(criteria.rating);
+  addRatingIfValid(criteria.workQuality);
+  addRatingIfValid(criteria.communication);
+  addRatingIfValid(criteria.punctuality);
+  addRatingIfValid(criteria.paymentOnTime);
 
   if (ratings.length === 0) return 0;
 

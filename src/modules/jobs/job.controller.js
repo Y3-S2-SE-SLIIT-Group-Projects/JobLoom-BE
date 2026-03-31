@@ -1,5 +1,6 @@
 import * as jobService from './job.service.js';
-import { sendSuccess, sendCreated } from '../../utils/response.utils.js';
+import { sendSuccess, sendCreated, sendError } from '../../utils/response.utils.js';
+import { generateCompletion } from '../../utils/llm.client.js';
 
 /**
  * Job Controller
@@ -18,6 +19,51 @@ export const createJob = async (req, res) => {
   const job = await jobService.createJob(req.body, employerId);
 
   sendCreated(res, 'Job created successfully', job);
+};
+
+/**
+ * @route   POST /api/jobs/generate-description
+ * @desc    Generate a job description from draft fields
+ * @access  Private (Employer only)
+ */
+export const generateJobDescription = async (req, res) => {
+  try {
+    const payload = req.body || {};
+
+    const baseSystem = `You are an expert recruiter and senior copywriter who writes clear, persuasive, SEO-friendly, and role-specific job descriptions that give candidates a perfect idea of the job, impact, and expectations. Avoid vague phrases; prefer concrete outcomes and measurable impact.`;
+
+    const userJson = JSON.stringify(
+      {
+        title: payload.title,
+        seniority: payload.seniority,
+        team: payload.team,
+        location: payload.location,
+        employment_type: payload.employment_type,
+        about_company: payload.about_company,
+        top_responsibilities: payload.top_responsibilities,
+        must_have_requirements: payload.must_have_requirements,
+        nice_to_have: payload.nice_to_have,
+        salary_range: payload.salary_range,
+        benefits: payload.benefits,
+        tone: payload.tone || 'professional, detailed, persuasive',
+        target_length_words: payload.target_length_words || 220,
+      },
+      null,
+      2
+    );
+
+    const userMessage = `Job data:\n${userJson}\n\nProduce a single job description approximately ${payload.target_length_words || 220} words using this structure: one-line headline; 1-2 paragraph role summary (impact + team + top responsibilities); 'Key Responsibilities' bullets; 'Who You Are / Qualifications' bullets; 'Why Join Us' paragraph; 'How to Apply' line. Use concrete outcomes and include keywords.`;
+
+    const prompt = `${baseSystem}\n\n${userMessage}`;
+
+    const aiResponse = await generateCompletion(prompt, { max_tokens: 700, temperature: 0.2 });
+
+    sendSuccess(res, 'Description generated', { description: aiResponse });
+  } catch (err) {
+    // If the error contains Cohere response data, include it for debugging (but don't leak secrets)
+    const errorDetails = err?.response || err?.message || String(err);
+    sendError(res, 'Failed to generate description', 500, errorDetails);
+  }
 };
 
 /**
@@ -159,6 +205,7 @@ export const deleteJob = async (req, res) => {
 
 export default {
   createJob,
+  generateJobDescription,
   getAllJobs,
   getNearbyJobs,
   getEmployerJobs,
