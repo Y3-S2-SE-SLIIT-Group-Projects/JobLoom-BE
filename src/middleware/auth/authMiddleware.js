@@ -1,6 +1,5 @@
-import jwt from 'jsonwebtoken';
+import { verifyToken } from '../../utils/jwt.utils.js';
 import User from '../../modules/users/user.model.js';
-import envConfig from '../../config/env.config.js';
 
 export const protect = async (req, res, next) => {
   let token;
@@ -9,9 +8,9 @@ export const protect = async (req, res, next) => {
     try {
       token = req.headers.authorization.split(' ')[1];
 
-      const decoded = jwt.verify(token, envConfig.jwtSecret);
+      const decoded = verifyToken(token);
 
-      req.user = await User.findById(decoded.id).select('-password');
+      req.user = await User.findById(decoded.userId).select('-password');
 
       if (!req.user) {
         return res.status(401).json({ message: 'Not authorized, user not found' });

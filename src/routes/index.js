@@ -8,10 +8,13 @@ import applicationRoutes from '../modules/applications/application.routes.js';
 import reviewRoutes from '../modules/reviews/review.routes.js';
 import calendlyRoutes from '../modules/calendly/calendly.routes.js';
 
+import adminRoutes from '../modules/admin/admin.routes.js';
+
 const router = Router();
 
 // Register route modules
 router.use('/hello', helloController);
+router.use('/admin', adminRoutes);
 router.use('/users', userRoutes);
 router.use('/jobs', jobRoutes);
 router.use('/applications', applicationRoutes);
