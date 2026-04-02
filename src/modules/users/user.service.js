@@ -1,12 +1,13 @@
 import User from './user.model.js';
-import jwt from 'jsonwebtoken';
-import envConfig from '../../config/env.config.js';
 import * as smsService from '../../services/sms.service.js';
 import crypto from 'crypto';
+import { generateToken as jwtGenerateToken } from '../../utils/jwt.utils.js';
 
-const generateToken = (id) => {
-  return jwt.sign({ id }, envConfig.jwtSecret, {
-    expiresIn: envConfig.jwtExpiresIn,
+const generateToken = (user) => {
+  return jwtGenerateToken({
+    userId: user._id,
+    email: user.email,
+    role: user.role,
   });
 };
 
@@ -80,7 +81,7 @@ export const verifyRegistration = async (phone, otp) => {
     lastName: user.lastName,
     email: user.email,
     role: user.role,
-    token: generateToken(user._id),
+    token: generateToken(user),
   };
 };
 
@@ -176,7 +177,7 @@ export const loginUser = async (email, password) => {
       lastName: user.lastName,
       email: user.email,
       role: user.role,
-      token: generateToken(user._id),
+      token: generateToken(user),
     };
   } else {
     throw new Error('Invalid email or password');
@@ -267,7 +268,7 @@ export const updateUserProfile = async (user, updates) => {
     skills: updatedUser.skills,
     experience: updatedUser.experience,
     location: updatedUser.location,
-    token: generateToken(updatedUser._id),
+    token: generateToken(updatedUser),
   };
 };
 

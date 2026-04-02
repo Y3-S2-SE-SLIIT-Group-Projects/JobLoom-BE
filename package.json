@@ -16,6 +16,7 @@
     "test:setup": "docker compose -f docker-compose.test.yml up -d",
     "test:teardown": "docker compose -f docker-compose.test.yml down",
     "seed:basic": "node scripts/seed-basic-users-job.js",
+    "seed:admin": "node scripts/seed-admin.js",
     "lint": "eslint src/**/*.js",
     "lint:fix": "eslint src/**/*.js --fix",
     "format": "prettier --write \"src/**/*.js\"",

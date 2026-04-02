@@ -25,6 +25,7 @@ const options = {
       { name: 'Jobs', description: 'Job postings, search, filters, and geospatial queries' },
       { name: 'Applications', description: 'Job application workflow and status management' },
       { name: 'Reviews', description: 'Review & rating system with trust scores and badges' },
+      { name: 'Admin', description: 'Administrative management and dashboard metrics' },
     ],
     components: {
       securitySchemes: {
