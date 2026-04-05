@@ -238,7 +238,7 @@ export const deleteReview = async (reviewId, userId, isAdmin = false) => {
     );
   }
 
-  await reviewRepository.hardDeleteReview(reviewId);
+  await reviewRepository.softDeleteReview(reviewId);
 
   return { message: 'Review deleted successfully' };
 };
