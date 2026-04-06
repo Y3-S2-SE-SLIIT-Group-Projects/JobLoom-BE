@@ -119,18 +119,40 @@ export const updateApplicationNotes = async (req, res) => {
 };
 
 /**
- * @route   PATCH /api/applications/:id/interview-date
- * @desc    Schedule or update an interview date for an application
+ * @route   PATCH /api/applications/:id/interview
+ * @desc    Schedule or update an interview for an application
  * @access  Private (Employer)
  */
 export const scheduleInterview = async (req, res) => {
   const application = await applicationService.scheduleInterview(
     req.params.id,
     req.user._id,
-    req.body.interviewDate
+    req.body
   );
 
-  sendSuccess(res, 'Interview date scheduled successfully', { application });
+  sendSuccess(res, 'Interview scheduled successfully', { application });
+};
+
+/**
+ * @route   DELETE /api/applications/:id/interview
+ * @desc    Cancel scheduled interview (clears interview fields; seeker notified by email)
+ * @access  Private (Employer)
+ */
+export const cancelInterview = async (req, res) => {
+  const application = await applicationService.cancelInterview(req.params.id, req.user._id);
+
+  sendSuccess(res, 'Interview cancelled successfully', { application });
+};
+
+/**
+ * @route   GET /api/applications/:id/interview-join-context
+ * @desc    Jitsi join context for a virtual interview (employer or applicant)
+ * @access  Private
+ */
+export const getInterviewJoinContext = async (req, res) => {
+  const context = await applicationService.getInterviewJoinContext(req.params.id, req.user._id);
+
+  sendSuccess(res, 'Interview join context retrieved', context);
 };
 
 /**
@@ -168,5 +190,7 @@ export default {
   getApplicationStats,
   updateApplicationNotes,
   scheduleInterview,
+  cancelInterview,
+  getInterviewJoinContext,
   checkApplicationEligibility,
 };

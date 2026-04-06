@@ -1,15 +1,16 @@
 import 'dotenv/config';
-import request from 'supertest';
-import mongoose from 'mongoose';
-import app from '../../src/server.js';
-import User from '../../src/modules/users/user.model.js';
-import { jest } from '@jest/globals';
+import { jest, describe, test, expect, beforeAll, afterAll, beforeEach } from '@jest/globals';
 
-// Mock the SMS service to avoid real network calls
-jest.mock('../../src/services/sms.service.js', () => ({
+// ESM: static imports run before jest.mock(). Mock first, then load the app so user.service gets the stub.
+await jest.unstable_mockModule('../../src/services/sms.service.js', () => ({
   sendOtp: jest.fn().mockResolvedValue({ success: true }),
   sendSms: jest.fn().mockResolvedValue({ success: true }),
 }));
+
+const request = (await import('supertest')).default;
+const mongoose = (await import('mongoose')).default;
+const { default: app } = await import('../../src/server.js');
+const { default: User } = await import('../../src/modules/users/user.model.js');
 
 describe('User Routes - Integration Tests', () => {
   beforeAll(async () => {
