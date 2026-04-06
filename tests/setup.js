@@ -3,11 +3,31 @@
  * Global test configuration and mocks
  */
 
+import { MongoMemoryServer } from 'mongodb-memory-server';
+
+let mongoServer;
+
 // Set NODE_ENV to test
 process.env.NODE_ENV = 'test';
 
+beforeAll(async () => {
+  // Fall back to an in-memory MongoDB instance when no external test DB URI is provided.
+  if (!process.env.MONGO_TEST_URI) {
+    mongoServer = await MongoMemoryServer.create();
+    process.env.MONGO_TEST_URI = mongoServer.getUri('jobloom-test');
+  }
+
+  process.env.MONGODB_URI = process.env.MONGO_TEST_URI;
+}, 60000);
+
+afterAll(async () => {
+  if (mongoServer) {
+    await mongoServer.stop();
+    mongoServer = undefined;
+  }
+});
+
 // Mock environment variables for tests
-process.env.MONGODB_URI = 'mongodb://localhost:27017/jobloom-test';
 process.env.JWT_SECRET = 'test-jwt-secret-key-for-testing-only';
 process.env.JWT_EXPIRES_IN = '1h';
 process.env.PORT = '3001';
