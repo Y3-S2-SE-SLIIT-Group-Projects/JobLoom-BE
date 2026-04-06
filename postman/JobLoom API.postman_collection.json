@@ -910,7 +910,7 @@
             "header": [],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"interviewDate\": \"2025-05-15T10:00:00.000Z\"\n}",
+              "raw": "{\n  \"interviewDate\": \"2026-05-15T10:00:00.000Z\",\n  \"interviewType\": \"virtual\",\n  \"interviewDuration\": 30\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -918,9 +918,9 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/applications/:id/interview-date",
+              "raw": "{{baseUrl}}/applications/:id/interview",
               "host": ["{{baseUrl}}"],
-              "path": ["applications", ":id", "interview-date"],
+              "path": ["applications", ":id", "interview"],
               "variable": [
                 {
                   "key": "id",
@@ -928,7 +928,47 @@
                 }
               ]
             },
-            "description": "Set or change the interview date. Employer must own the job. Date must be in the future."
+            "description": "Schedule or update interview (virtual or in_person). Employer must own the job. Date must be in the future. Virtual interviews get a jitsiRoomName; in_person requires interviewLocation."
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel Interview",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/applications/:id/interview",
+              "host": ["{{baseUrl}}"],
+              "path": ["applications", ":id", "interview"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Employer only. Clears interview fields; candidate notified by email."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Interview Join Context (Jitsi)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/applications/:id/interview-join-context",
+              "host": ["{{baseUrl}}"],
+              "path": ["applications", ":id", "interview-join-context"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Virtual interview only. Employer or applicant on the application. Returns JITSI_DOMAIN, roomName, displayName, jobTitle, interviewDate, interviewDuration, role."
           },
           "response": []
         },

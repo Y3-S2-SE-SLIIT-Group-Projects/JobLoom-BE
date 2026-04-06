@@ -142,6 +142,48 @@ class EnvConfig {
   }
 
   /**
+   * Public web app origin (no trailing slash required) — used in transactional emails
+   */
+  get frontendUrl() {
+    return process.env.FRONTEND_URL || '';
+  }
+
+  /** Whether Nodemailer SMTP credentials are present */
+  get isSmtpConfigured() {
+    return Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+  }
+
+  get smtpHost() {
+    return process.env.SMTP_HOST || '';
+  }
+
+  get smtpPort() {
+    const p = parseInt(process.env.SMTP_PORT, 10);
+    return Number.isFinite(p) && p > 0 ? p : 587;
+  }
+
+  get smtpUser() {
+    return process.env.SMTP_USER || '';
+  }
+
+  get smtpPass() {
+    return process.env.SMTP_PASS || '';
+  }
+
+  get smtpFromName() {
+    return process.env.SMTP_FROM_NAME || 'JobLoom';
+  }
+
+  /**
+   * Envelope From address. For Gmail (and most hosts), this must match the
+   * authenticated SMTP_USER unless you use "Send mail as" / verified aliases.
+   * Defaults to SMTP_USER when SMTP_FROM_EMAIL is unset.
+   */
+  get smtpFromEmail() {
+    return process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER || 'noreply@jobloom.lk';
+  }
+
+  /**
    * Get all configuration as an object
    */
   getAll() {
@@ -159,6 +201,14 @@ class EnvConfig {
       cohereApiKey: this.cohereApiKey ? '***' : undefined,
       cohereApiBaseUrl: this.cohereApiBaseUrl,
       cohereModel: this.cohereModel,
+      frontendUrl: this.frontendUrl || undefined,
+      isSmtpConfigured: this.isSmtpConfigured,
+      smtpHost: this.smtpHost || undefined,
+      smtpPort: this.smtpPort,
+      smtpUser: this.smtpUser || undefined,
+      smtpPass: this.smtpPass ? '***' : undefined,
+      smtpFromName: this.smtpFromName,
+      smtpFromEmail: this.smtpFromEmail,
     };
   }
 }
