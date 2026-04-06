@@ -245,6 +245,33 @@ const detailField = (label, valueHtml) => `
 const mailFrom = () => `"${envConfig.smtpFromName}" <${envConfig.smtpFromEmail}>`;
 
 /**
+ * In test, redirect every envelope `to` to SMTP_TEST_RECIPIENT when set (Jest unit/integration).
+ * @param {string} intendedTo
+ * @returns {{ to: string, intendedTo: string | null }}
+ */
+const resolveMailTo = (intendedTo) => {
+  const redirect = envConfig.smtpTestRedirectTo;
+  if (envConfig.isTest && redirect && intendedTo && intendedTo !== redirect) {
+    return { to: redirect, intendedTo };
+  }
+  return { to: intendedTo, intendedTo: null };
+};
+
+/**
+ * @param {import('nodemailer').Transporter} transport
+ * @param {Omit<import('nodemailer').SendMailOptions, 'from'> & { to: string }} options
+ */
+const sendMailWithTestRedirect = async (transport, { to: intendedTo, ...rest }) => {
+  const { to, intendedTo: originalRecipient } = resolveMailTo(intendedTo);
+  const info = await transport.sendMail({
+    from: mailFrom(),
+    to,
+    ...rest,
+  });
+  return { info, envelopeTo: to, originalRecipient };
+};
+
+/**
  * Lazy singleton Nodemailer transporter (SMTP)
  * @returns {import('nodemailer').Transporter | null}
  */
@@ -412,14 +439,17 @@ export const sendInterviewScheduledEmail = async ({
   const text = textDetails;
 
   try {
-    const info = await transport.sendMail({
-      from: mailFrom(),
+    const { info, envelopeTo, originalRecipient } = await sendMailWithTestRedirect(transport, {
       to,
       subject,
       text,
       html,
     });
-    logger.info('Interview scheduled email sent', { to, messageId: info.messageId });
+    logger.info('Interview scheduled email sent', {
+      to: envelopeTo,
+      ...(originalRecipient && { intendedRecipient: originalRecipient }),
+      messageId: info.messageId,
+    });
     return { sent: true, messageId: info.messageId };
   } catch (err) {
     logger.error('Failed to send interview scheduled email', {
@@ -555,14 +585,17 @@ export const sendEmployerInterviewScheduledEmail = async ({
   const text = textDetails;
 
   try {
-    const info = await transport.sendMail({
-      from: mailFrom(),
+    const { info, envelopeTo, originalRecipient } = await sendMailWithTestRedirect(transport, {
       to,
       subject,
       text,
       html,
     });
-    logger.info('Employer interview scheduled email sent', { to, messageId: info.messageId });
+    logger.info('Employer interview scheduled email sent', {
+      to: envelopeTo,
+      ...(originalRecipient && { intendedRecipient: originalRecipient }),
+      messageId: info.messageId,
+    });
     return { sent: true, messageId: info.messageId };
   } catch (err) {
     logger.error('Failed to send employer interview scheduled email', {
@@ -656,14 +689,18 @@ export const sendApplicationDecisionEmail = async ({
   const text = `${textPlain}${applicationUrl ? `\nView application: ${applicationUrl}\n` : ''}`;
 
   try {
-    const info = await transport.sendMail({
-      from: mailFrom(),
+    const { info, envelopeTo, originalRecipient } = await sendMailWithTestRedirect(transport, {
       to,
       subject,
       text,
       html: baseLayout(innerHtml, { preheader }),
     });
-    logger.info('Application decision email sent', { to, outcome, messageId: info.messageId });
+    logger.info('Application decision email sent', {
+      to: envelopeTo,
+      ...(originalRecipient && { intendedRecipient: originalRecipient }),
+      outcome,
+      messageId: info.messageId,
+    });
     return { sent: true, messageId: info.messageId };
   } catch (err) {
     logger.error('Failed to send application decision email', {
@@ -744,15 +781,15 @@ export const sendEmployerApplicationDecisionEmail = async ({
   text += employerApplicationUrl ? `\nManage application: ${employerApplicationUrl}\n` : '';
 
   try {
-    const info = await transport.sendMail({
-      from: mailFrom(),
+    const { info, envelopeTo, originalRecipient } = await sendMailWithTestRedirect(transport, {
       to,
       subject,
       text,
       html: baseLayout(innerHtml, { preheader }),
     });
     logger.info('Employer application decision email sent', {
-      to,
+      to: envelopeTo,
+      ...(originalRecipient && { intendedRecipient: originalRecipient }),
       outcome,
       messageId: info.messageId,
     });
@@ -827,14 +864,17 @@ export const sendInterviewCancelledEmail = async ({
   text += viewApplicationUrl ? `\nApplication: ${viewApplicationUrl}\n` : '';
 
   try {
-    const info = await transport.sendMail({
-      from: mailFrom(),
+    const { info, envelopeTo, originalRecipient } = await sendMailWithTestRedirect(transport, {
       to,
       subject,
       text,
       html: baseLayout(innerHtml, { preheader }),
     });
-    logger.info('Interview cancelled email sent', { to, messageId: info.messageId });
+    logger.info('Interview cancelled email sent', {
+      to: envelopeTo,
+      ...(originalRecipient && { intendedRecipient: originalRecipient }),
+      messageId: info.messageId,
+    });
     return { sent: true, messageId: info.messageId };
   } catch (err) {
     logger.error('Failed to send interview cancelled email', {
@@ -905,14 +945,17 @@ export const sendEmployerInterviewCancelledEmail = async ({
   text += manageApplicationUrl ? `\nApplication: ${manageApplicationUrl}\n` : '';
 
   try {
-    const info = await transport.sendMail({
-      from: mailFrom(),
+    const { info, envelopeTo, originalRecipient } = await sendMailWithTestRedirect(transport, {
       to,
       subject,
       text,
       html: baseLayout(innerHtml, { preheader }),
     });
-    logger.info('Employer interview cancelled email sent', { to, messageId: info.messageId });
+    logger.info('Employer interview cancelled email sent', {
+      to: envelopeTo,
+      ...(originalRecipient && { intendedRecipient: originalRecipient }),
+      messageId: info.messageId,
+    });
     return { sent: true, messageId: info.messageId };
   } catch (err) {
     logger.error('Failed to send employer interview cancelled email', {

@@ -184,6 +184,13 @@ class EnvConfig {
   }
 
   /**
+   * When set and NODE_ENV=test, transactional mail `to` is rewritten to this address (see email.service).
+   */
+  get smtpTestRedirectTo() {
+    return (process.env.SMTP_TEST_RECIPIENT || '').trim();
+  }
+
+  /**
    * Get all configuration as an object
    */
   getAll() {
