@@ -5,7 +5,7 @@
  *   description: Job postings, search, filters, and geospatial queries
  */
 
-// ─── Public endpoints ───
+// Public endpoints
 
 /**
  * @swagger
@@ -41,7 +41,7 @@
  *         name: category
  *         schema:
  *           type: string
- *           enum: [agriculture, construction, delivery, retail, manufacturing, hospitality, healthcare, education, transportation, domestic_work, security, technical, skilled_labor, other]
+ *           enum: [agriculture, farming, livestock, fishing, construction, carpentry, masonry, plumbing, electrical, welding, manufacturing, factory_work, assembly, food_service, cooking, catering, hospitality, retail, sales, customer_service, transportation, driving, delivery, logistics, cleaning, maintenance, janitorial, security, guard_services, tailoring, textiles, garment_making, beauty_services, salon, spa, education, teaching, tutoring, healthcare, nursing, caregiving, IT, technology, software, general_labor, manual_labor, other]
  *         description: Filter by job category
  *       - in: query
  *         name: status
@@ -50,16 +50,10 @@
  *           enum: [open, closed, filled]
  *         description: Filter by job status
  *       - in: query
- *         name: employmentType
- *         schema:
- *           type: string
- *           enum: [full_time, part_time, contract, temporary, seasonal]
- *         description: Filter by employment type
- *       - in: query
  *         name: salaryType
  *         schema:
  *           type: string
- *           enum: [hourly, daily, weekly, monthly, contract]
+ *           enum: [daily, weekly, monthly, contract]
  *         description: Filter by salary type
  *       - in: query
  *         name: minSalary
@@ -84,12 +78,19 @@
  *           type: string
  *         description: Full-text search in title and description
  *       - in: query
- *         name: sort
+ *         name: sortBy
  *         schema:
  *           type: string
- *           default: -createdAt
- *           enum: [-createdAt, createdAt, -salaryAmount, salaryAmount, title, -title]
- *         description: Sort field (prefix with - for descending)
+ *           default: createdAt
+ *           enum: [createdAt, salaryAmount, title, applicantsCount]
+ *         description: Sort field
+ *       - in: query
+ *         name: sortOrder
+ *         schema:
+ *           type: string
+ *           default: desc
+ *           enum: [asc, desc]
+ *         description: Sort direction
  *     responses:
  *       200:
  *         description: Jobs retrieved successfully
@@ -160,7 +161,7 @@
  *       **Coordinates Format:** GeoJSON Point [longitude, latitude]
  *     parameters:
  *       - in: query
- *         name: longitude
+ *         name: lng
  *         required: true
  *         schema:
  *           type: number
@@ -168,7 +169,7 @@
  *           maximum: 180
  *         description: Longitude coordinate (e.g., 79.8612)
  *       - in: query
- *         name: latitude
+ *         name: lat
  *         required: true
  *         schema:
  *           type: number
@@ -181,7 +182,7 @@
  *           type: number
  *           default: 50
  *           minimum: 1
- *           maximum: 500
+ *           maximum: 1000
  *         description: Search radius in kilometers
  *     responses:
  *       200:
@@ -208,20 +209,88 @@
  *                                 type: number
  *                                 description: Distance from search center in kilometers
  *                                 example: 5.2
- *                     searchCenter:
- *                       type: object
- *                       properties:
- *                         longitude:
- *                           type: number
- *                         latitude:
- *                           type: number
- *                     radiusKm:
- *                       type: number
  *       400:
  *         description: Invalid coordinates or missing required parameters
  */
 
-// ─── Protected endpoints (Employer only) ───
+/**
+ * @swagger
+ * /api/jobs/generate-description:
+ *   post:
+ *     tags: [Jobs]
+ *     summary: Generate AI job description draft
+ *     description: Generates a structured HTML job description draft from partial job draft fields.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *                 example: "Farm Supervisor"
+ *               category:
+ *                 type: string
+ *                 enum: [agriculture, farming, livestock, fishing, construction, carpentry, masonry, plumbing, electrical, welding, manufacturing, factory_work, assembly, food_service, cooking, catering, hospitality, retail, sales, customer_service, transportation, driving, delivery, logistics, cleaning, maintenance, janitorial, security, guard_services, tailoring, textiles, garment_making, beauty_services, salon, spa, education, teaching, tutoring, healthcare, nursing, caregiving, IT, technology, software, general_labor, manual_labor, other]
+ *               jobRole:
+ *                 type: string
+ *                 example: "Field Operations Supervisor"
+ *               employmentType:
+ *                 type: string
+ *                 enum: [full-time, part-time, contract, temporary, internship, seasonal, freelance]
+ *               salaryType:
+ *                 type: string
+ *                 enum: [daily, weekly, monthly, contract]
+ *               salaryAmount:
+ *                 type: number
+ *                 minimum: 0
+ *               skillsRequired:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               location:
+ *                 type: object
+ *                 properties:
+ *                   village:
+ *                     type: string
+ *                   district:
+ *                     type: string
+ *                   province:
+ *                     type: string
+ *                   fullAddress:
+ *                     type: string
+ *     responses:
+ *       200:
+ *         description: Description generated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Description generated
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     description:
+ *                       type: string
+ *                       example: "<h3>Job Overview</h3><p>...</p>"
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ */
+
+// Protected endpoints (Employer only)
 
 /**
  * @swagger
@@ -238,10 +307,10 @@
  *       - Optional geospatial coordinates for location-based searches
  *
  *       **Salary Options:**
- *       - hourly, daily, weekly, monthly, contract
+ *       - daily, weekly, monthly, contract
  *
  *       **Employment Types:**
- *       - full_time, part_time, contract, temporary, seasonal
+ *       - full-time, part-time, contract, temporary, internship, seasonal, freelance
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -269,12 +338,12 @@
  *                 example: "Looking for experienced workers to help with rice paddy harvesting season."
  *               category:
  *                 type: string
- *                 enum: [agriculture, construction, delivery, retail, manufacturing, hospitality, healthcare, education, transportation, domestic_work, security, technical, skilled_labor, other]
+ *                 enum: [agriculture, farming, livestock, fishing, construction, carpentry, masonry, plumbing, electrical, welding, manufacturing, factory_work, assembly, food_service, cooking, catering, hospitality, retail, sales, customer_service, transportation, driving, delivery, logistics, cleaning, maintenance, janitorial, security, guard_services, tailoring, textiles, garment_making, beauty_services, salon, spa, education, teaching, tutoring, healthcare, nursing, caregiving, IT, technology, software, general_labor, manual_labor, other]
  *                 example: agriculture
  *               employmentType:
  *                 type: string
- *                 enum: [full_time, part_time, contract, temporary, seasonal]
- *                 default: full_time
+ *                 enum: [full-time, part-time, contract, temporary, internship, seasonal, freelance]
+ *                 default: full-time
  *                 example: seasonal
  *               salaryAmount:
  *                 type: number
@@ -282,7 +351,7 @@
  *                 example: 1500
  *               salaryType:
  *                 type: string
- *                 enum: [hourly, daily, weekly, monthly, contract]
+ *                 enum: [daily, weekly, monthly, contract]
  *                 default: monthly
  *                 example: daily
  *               currency:
@@ -518,7 +587,7 @@
  *                 minimum: 0
  *               salaryType:
  *                 type: string
- *                 enum: [hourly, daily, weekly, monthly, contract]
+ *                 enum: [daily, weekly, monthly, contract]
  *               positions:
  *                 type: integer
  *                 minimum: 1
@@ -708,7 +777,7 @@
  *         description: Job not found
  */
 
-// ─── Component schemas ───
+// Component schemas
 
 /**
  * @swagger
@@ -730,10 +799,10 @@
  *           type: string
  *         category:
  *           type: string
- *           enum: [agriculture, construction, delivery, retail, manufacturing, hospitality, healthcare, education, transportation, domestic_work, security, technical, skilled_labor, other]
+ *           enum: [agriculture, farming, livestock, fishing, construction, carpentry, masonry, plumbing, electrical, welding, manufacturing, factory_work, assembly, food_service, cooking, catering, hospitality, retail, sales, customer_service, transportation, driving, delivery, logistics, cleaning, maintenance, janitorial, security, guard_services, tailoring, textiles, garment_making, beauty_services, salon, spa, education, teaching, tutoring, healthcare, nursing, caregiving, IT, technology, software, general_labor, manual_labor, other]
  *         employmentType:
  *           type: string
- *           enum: [full_time, part_time, contract, temporary, seasonal]
+ *           enum: [full-time, part-time, contract, temporary, internship, seasonal, freelance]
  *         status:
  *           type: string
  *           enum: [open, closed, filled]
@@ -746,7 +815,7 @@
  *           example: 1500
  *         salaryType:
  *           type: string
- *           enum: [hourly, daily, weekly, monthly, contract]
+ *           enum: [daily, weekly, monthly, contract]
  *           example: daily
  *         currency:
  *           type: string

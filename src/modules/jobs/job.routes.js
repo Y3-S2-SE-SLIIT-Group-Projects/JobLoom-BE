@@ -4,6 +4,8 @@ import * as jobValidation from './job.validation.js';
 import { protect } from '../../middleware/auth/authMiddleware.js';
 import { authorize } from '../../middleware/auth/roleMiddleware.js';
 import { validate } from '../../middleware/validation.middleware.js';
+import lowDataMiddleware from '../../middleware/low-data.middleware.js';
+import cacheHeaders from '../../middleware/cache-headers.middleware.js';
 
 const router = express.Router();
 
@@ -19,44 +21,27 @@ const router = express.Router();
 /**
  * Get all jobs with filtering, searching, sorting, and pagination
  */
-router.get('/', jobValidation.getJobsValidation, validate, jobController.getAllJobs);
+router.get(
+  '/',
+  lowDataMiddleware({
+    maxLimit: 5,
+    defaultFields: 'title,category,location,salaryAmount,salaryType,status,employerId,createdAt',
+  }),
+  cacheHeaders(300),
+  jobValidation.getJobsValidation,
+  validate,
+  jobController.getAllJobs
+);
 
-/**
- * Get nearby jobs using geospatial query (Mapbox integration)
- */
 router.get('/nearby', jobValidation.getNearbyJobsValidation, validate, jobController.getNearbyJobs);
 
-/**
- * Get recommended jobs based on user skills
- */
 router.get('/recommendations', protect, jobController.getRecommendedJobs);
-
-/**
- * Get single job by ID
- */
-router.get('/:id', jobValidation.getJobValidation, validate, jobController.getJobById);
 
 // ============================================
 // PROTECTED ROUTES (Employer only)
+// Static segments must be registered before /:id to avoid being swallowed by the param.
 // ============================================
 
-/**
- * Create a new job posting
- * Protected route - Employer only
- */
-router.post(
-  '/',
-  protect,
-  authorize('employer'),
-  jobValidation.createJobValidation,
-  validate,
-  jobController.createJob
-);
-
-/**
- * Get jobs created by employer (My Jobs)
- * Protected route - Employer only
- */
 router.get(
   '/employer/my-jobs',
   protect,
@@ -66,11 +51,34 @@ router.get(
   jobController.getEmployerJobs
 );
 
-/**
- * Get employer statistics for dashboard
- * Protected route - Employer only
- */
 router.get('/employer/stats', protect, authorize('employer'), jobController.getEmployerStats);
+
+router.post(
+  '/generate-description',
+  protect,
+  authorize('employer'),
+  jobValidation.generateJobDescriptionValidation,
+  validate,
+  jobController.generateJobDescription
+);
+
+router.post(
+  '/',
+  protect,
+  authorize('employer'),
+  jobValidation.createJobValidation,
+  validate,
+  jobController.createJob
+);
+
+// Param route must come after all static segments
+router.get(
+  '/:id',
+  cacheHeaders(600),
+  jobValidation.getJobValidation,
+  validate,
+  jobController.getJobById
+);
 
 /**
  * Update job details

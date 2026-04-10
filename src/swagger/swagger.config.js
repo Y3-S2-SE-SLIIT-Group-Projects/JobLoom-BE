@@ -25,6 +25,8 @@ const options = {
       { name: 'Jobs', description: 'Job postings, search, filters, and geospatial queries' },
       { name: 'Applications', description: 'Job application workflow and status management' },
       { name: 'Reviews', description: 'Review & rating system with trust scores and badges' },
+      { name: 'AI', description: 'AI-powered analysis endpoints' },
+      { name: 'Admin', description: 'Administrative management and dashboard metrics' },
     ],
     components: {
       securitySchemes: {
@@ -143,6 +145,19 @@ const options = {
               },
             },
             interviewDate: { type: 'string', format: 'date-time', nullable: true },
+            interviewType: {
+              type: 'string',
+              enum: ['virtual', 'in_person'],
+              nullable: true,
+            },
+            jitsiRoomName: {
+              type: 'string',
+              nullable: true,
+              description: 'Jitsi room id when interviewType is virtual',
+            },
+            interviewLocation: { type: 'string', maxLength: 300, nullable: true },
+            interviewLocationNotes: { type: 'string', maxLength: 500, nullable: true },
+            interviewDuration: { type: 'integer', minimum: 15, maximum: 480, nullable: true },
             withdrawalReason: { type: 'string', maxLength: 500, nullable: true },
             isActive: { type: 'boolean', default: true },
             createdAt: { type: 'string', format: 'date-time' },

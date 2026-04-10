@@ -6,7 +6,7 @@
  * Usage:  node scripts/seed-review-test.js
  */
 
-// ── Force Google DNS first — local ISP DNS doesn't support MongoDB SRV lookups ──
+// Force Google DNS first — local ISP DNS doesn't support MongoDB SRV lookups
 import dns from 'dns';
 dns.setServers(['8.8.8.8', '8.8.4.4']);
 
@@ -21,8 +21,9 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
-// ─── config ───────────────────────────────────────────────────────────────────
-const MONGO_URI = process.env.MONGODB_URI;
+// config
+const MONGO_URI =
+  'mongodb+srv://dilzhanYapa:7XAgqjH6GKBfoiLZ@jobloom.lzhfyie.mongodb.net/?appName=JobLoom';
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
 const JWT_TTL = process.env.JWT_EXPIRES_IN || '7d';
 const PORT = process.env.PORT || 3008;
@@ -34,7 +35,7 @@ if (!MONGO_URI) {
   process.exit(1);
 }
 
-// ─── inline schemas (avoids importing source files with side-effects) ─────────
+// inline schemas (avoids importing source files with side-effects)
 const { Schema, model, connect, disconnect } = mongoose;
 
 const userSchema = new Schema(
@@ -69,6 +70,7 @@ const jobSchema = new Schema(
     experienceRequired: { type: String, default: 'none' },
     positions: { type: Number, default: 1 },
     status: { type: String, default: 'open' },
+    isActive: { type: Boolean, default: true },
   },
   { timestamps: true }
 );
@@ -88,17 +90,17 @@ const appSchema = new Schema(
 );
 const Application = model('Application', appSchema);
 
-// ─── helpers ──────────────────────────────────────────────────────────────────
+// helpers
 const genToken = (id) => jwt.sign({ id }, JWT_SECRET, { expiresIn: JWT_TTL });
 const hash = (pw) => bcrypt.hash(pw, 10);
 
-// ─── seed ─────────────────────────────────────────────────────────────────────
+// seed
 async function seed() {
   console.log('Connecting to MongoDB Atlas (via Google DNS)...');
   await connect(MONGO_URI);
   console.log('Connected.\n');
 
-  // ── 1. Users ─────────────────────────────────────────────────────────────
+  // 1. Users
   await User.deleteOne({ email: 'seed.employer@jobloom.test' });
   await User.deleteOne({ email: 'seed.seeker@jobloom.test' });
 
@@ -133,7 +135,7 @@ async function seed() {
   console.log('   Employer ID :', employer._id.toString());
   console.log('   JobSeeker ID:', seeker._id.toString());
 
-  // ── 2. Jobs ───────────────────────────────────────────────────────────────
+  // 2. Jobs
   await Job.deleteMany({ employerId: employer._id });
 
   const job1 = await Job.create({
@@ -151,6 +153,7 @@ async function seed() {
     experienceRequired: 'beginner',
     positions: 5,
     status: 'open',
+    isActive: true,
   });
 
   const job2 = await Job.create({
@@ -168,13 +171,14 @@ async function seed() {
     experienceRequired: 'none',
     positions: 3,
     status: 'open',
+    isActive: true,
   });
 
   console.log('\n✅ Jobs created');
   console.log('   Job 1 ID:', job1._id.toString());
   console.log('   Job 2 ID:', job2._id.toString());
 
-  // ── 3. Applications (status: accepted) ───────────────────────────────────
+  // 3. Applications (status: accepted)
   await Application.deleteMany({
     jobSeekerId: seeker._id,
     jobId: { $in: [job1._id, job2._id] },
@@ -208,7 +212,7 @@ async function seed() {
   console.log('   App 1 ID:', app1._id.toString());
   console.log('   App 2 ID:', app2._id.toString());
 
-  // ── 4. Build Postman collection ───────────────────────────────────────────
+  // 4. Build Postman collection
   const IDS = {
     employerId: employer._id.toString(),
     jobSeekerId: seeker._id.toString(),
@@ -222,6 +226,10 @@ async function seed() {
 
   const collection = buildCollection(IDS);
   fs.writeFileSync(OUT_FILE, JSON.stringify(collection, null, 2));
+
+  // Write a simple IDs file for test-reviews.py
+  const IDS_FILE = path.join(__dirname, 'seed-ids.json');
+  fs.writeFileSync(IDS_FILE, JSON.stringify(IDS, null, 2));
 
   console.log('\n✅ Postman collection written to:');
   console.log('  ', OUT_FILE);
@@ -240,7 +248,7 @@ async function seed() {
   await disconnect();
 }
 
-// ─── Postman collection builder ───────────────────────────────────────────────
+// Postman collection builder
 function buildCollection({ employerId, jobSeekerId, job1Id, job2Id, employerToken, seekerToken }) {
   const A_EMP = [{ key: 'Authorization', value: `Bearer ${employerToken}` }];
   const A_SEEK = [{ key: 'Authorization', value: `Bearer ${seekerToken}` }];
@@ -287,7 +295,7 @@ function buildCollection({ employerId, jobSeekerId, job1Id, job2Id, employerToke
       { key: 'review2Id', value: '', type: 'string' },
     ],
     item: [
-      // ── 0: Verify seeded data ─────────────────────────────────────────────
+      // 0: Verify seeded data
       {
         name: '0 — Verify Seeded Data',
         description: 'Confirm all seed records exist before testing reviews.',
@@ -341,7 +349,7 @@ function buildCollection({ employerId, jobSeekerId, job1Id, job2Id, employerToke
         ],
       },
 
-      // ── 1: Login (for fresh tokens) ───────────────────────────────────────
+      // 1: Login (for fresh tokens)
       {
         name: '1 — Login (use if tokens expire)',
         description:
@@ -380,7 +388,7 @@ function buildCollection({ employerId, jobSeekerId, job1Id, job2Id, employerToke
         ],
       },
 
-      // ── 2: Create Reviews ─────────────────────────────────────────────────
+      // 2: Create Reviews
       {
         name: '2 — Create Reviews ← START HERE',
         description: '4 reviews: both users × both jobs. All applications are pre-accepted.',
@@ -474,7 +482,7 @@ function buildCollection({ employerId, jobSeekerId, job1Id, job2Id, employerToke
         ],
       },
 
-      // ── 3: Read Reviews & Stats ───────────────────────────────────────────
+      // 3: Read Reviews & Stats
       {
         name: '3 — Read Reviews & Stats',
         item: [
@@ -561,7 +569,7 @@ function buildCollection({ employerId, jobSeekerId, job1Id, job2Id, employerToke
         ],
       },
 
-      // ── 4: Manage ─────────────────────────────────────────────────────────
+      // 4: Manage
       {
         name: '4 — Manage Reviews',
         description: 'Run section 2 first so review1Id is populated in collection variables.',
@@ -614,7 +622,7 @@ function buildCollection({ employerId, jobSeekerId, job1Id, job2Id, employerToke
         ],
       },
 
-      // ── 5: Error Cases ────────────────────────────────────────────────────
+      // 5: Error Cases
       {
         name: '5 — Error Cases',
         item: [

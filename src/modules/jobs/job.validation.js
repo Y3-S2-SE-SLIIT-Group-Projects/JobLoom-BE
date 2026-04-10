@@ -89,13 +89,19 @@ export const createJobValidation = [
   body('description')
     .optional()
     .trim()
-    .isLength({ min: 20, max: 2000 })
-    .withMessage('Description must be between 20 and 2000 characters if provided'),
+    .isLength({ min: 20 })
+    .withMessage('Description must be at least 20 characters if provided'),
 
   body('category')
     .optional()
     .isIn(JOB_CATEGORIES)
     .withMessage(`Category must be one of: ${JOB_CATEGORIES.join(', ')}`),
+
+  body('categoryLabel')
+    .optional()
+    .trim()
+    .isLength({ min: 1, max: 100 })
+    .withMessage('Category label must be between 1 and 100 characters if provided'),
 
   body('jobRole')
     .optional()
@@ -182,13 +188,19 @@ export const updateJobValidation = [
   body('description')
     .optional()
     .trim()
-    .isLength({ min: 20, max: 2000 })
-    .withMessage('Description must be between 20 and 2000 characters'),
+    .isLength({ min: 20 })
+    .withMessage('Description must be at least 20 characters'),
 
   body('category')
     .optional()
     .isIn(JOB_CATEGORIES)
     .withMessage(`Category must be one of: ${JOB_CATEGORIES.join(', ')}`),
+
+  body('categoryLabel')
+    .optional()
+    .trim()
+    .isLength({ min: 1, max: 100 })
+    .withMessage('Category label must be between 1 and 100 characters if provided'),
 
   body('jobRole')
     .optional()
@@ -359,6 +371,69 @@ export const getEmployerJobsValidation = [
     .withMessage(`Status must be one of: ${JOB_STATUS.join(', ')}`),
 ];
 
+/**
+ * Generate job description validation
+ */
+export const generateJobDescriptionValidation = [
+  body('title')
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Title must be between 2 and 100 characters if provided'),
+
+  body('category')
+    .optional()
+    .isIn(JOB_CATEGORIES)
+    .withMessage(`Category must be one of: ${JOB_CATEGORIES.join(', ')}`),
+
+  body('jobRole')
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Job role must be between 2 and 100 characters if provided'),
+
+  body('employmentType')
+    .optional()
+    .isIn(EMPLOYMENT_TYPES)
+    .withMessage(`Employment type must be one of: ${EMPLOYMENT_TYPES.join(', ')}`),
+
+  body('salaryType')
+    .optional()
+    .isIn(SALARY_TYPES)
+    .withMessage(`Salary type must be one of: ${SALARY_TYPES.join(', ')}`),
+
+  body('salaryAmount')
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage('Salary amount must be a positive number if provided'),
+
+  body('experienceRequired')
+    .optional()
+    .isIn(EXPERIENCE_LEVELS)
+    .withMessage(`Experience level must be one of: ${EXPERIENCE_LEVELS.join(', ')}`),
+
+  body('positions')
+    .optional()
+    .isInt({ min: 1, max: 100 })
+    .withMessage('Positions must be a number between 1 and 100 if provided'),
+
+  body('skillsRequired').optional().isArray().withMessage('Skills required must be an array'),
+
+  body('skillsRequired.*').optional().trim().isString().withMessage('Each skill must be a string'),
+
+  body('location.village').optional().trim().isString().withMessage('Village must be a string'),
+
+  body('location.district').optional().trim().isString().withMessage('District must be a string'),
+
+  body('location.province').optional().trim().isString().withMessage('Province must be a string'),
+
+  body('location.fullAddress')
+    .optional()
+    .trim()
+    .isString()
+    .withMessage('Full address must be a string'),
+];
+
 export default {
   createJobValidation,
   updateJobValidation,
@@ -367,4 +442,5 @@ export default {
   getJobsValidation,
   getNearbyJobsValidation,
   getEmployerJobsValidation,
+  generateJobDescriptionValidation,
 };

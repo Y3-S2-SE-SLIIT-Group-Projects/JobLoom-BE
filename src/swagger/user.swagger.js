@@ -5,7 +5,7 @@
  *   description: User registration, authentication, and profile management
  */
 
-// ─── Schemas ──────────────────────────────────────────────────────────────────
+// Schemas
 
 /**
  * @swagger
@@ -129,7 +129,7 @@
  *           example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
  */
 
-// ─── Public endpoints ──────────────────────────────────────────────────────────
+// Public endpoints
 
 /**
  * @swagger
@@ -518,7 +518,7 @@
  *                   example: Invalid or expired reset token
  */
 
-// ─── Protected endpoints ───────────────────────────────────────────────────────
+// Protected endpoints
 
 /**
  * @swagger

@@ -6,7 +6,7 @@ import mongoose from 'mongoose';
  * Tests business logic with mocked Mongoose models
  */
 
-// ── Helpers ──────────────────────────────────────────────────────────
+// Helpers
 const oid = () => new mongoose.Types.ObjectId();
 
 // Fixed IDs reused across tests
@@ -15,7 +15,7 @@ const employerId = oid();
 const jobId = oid();
 const applicationId = oid();
 
-// ── Mock factories ───────────────────────────────────────────────────
+// Mock factories
 
 /** Build a fake Job document returned by Job.findById */
 const makeJob = (overrides = {}) => ({
@@ -51,7 +51,7 @@ const makeApplication = (overrides = {}) => {
   return app;
 };
 
-// ── Module-level mocks ───────────────────────────────────────────────
+// Module-level mocks
 // We must use unstable_mockModule because the project is ESM.
 
 /**
@@ -112,6 +112,22 @@ jest.unstable_mockModule('../../src/modules/jobs/job.model.js', () => ({
   default: mockJobModel,
 }));
 
+const sendInterviewScheduledEmail = jest.fn().mockResolvedValue({ sent: true });
+const sendEmployerInterviewScheduledEmail = jest.fn().mockResolvedValue({ sent: true });
+const sendInterviewCancelledEmail = jest.fn().mockResolvedValue({ sent: true });
+const sendEmployerInterviewCancelledEmail = jest.fn().mockResolvedValue({ sent: true });
+const sendApplicationDecisionEmail = jest.fn().mockResolvedValue({ sent: true });
+const sendEmployerApplicationDecisionEmail = jest.fn().mockResolvedValue({ sent: true });
+
+jest.unstable_mockModule('../../src/services/email.service.js', () => ({
+  sendInterviewScheduledEmail,
+  sendEmployerInterviewScheduledEmail,
+  sendInterviewCancelledEmail,
+  sendEmployerInterviewCancelledEmail,
+  sendApplicationDecisionEmail,
+  sendEmployerApplicationDecisionEmail,
+}));
+
 // Import service AFTER mocks are registered
 const {
   applyForJob,
@@ -124,12 +140,21 @@ const {
   checkApplicationEligibility,
 } = await import('../../src/modules/applications/application.service.js');
 
-// ── Test suites ──────────────────────────────────────────────────────
+// Test suites
 
 describe('Application Service — Unit Tests', () => {
-  // ────────────────────────────────────────────────────────────────────
+  beforeEach(() => {
+    // jest.config has resetMocks: true — restore async email stubs each test
+    sendInterviewScheduledEmail.mockResolvedValue({ sent: true });
+    sendEmployerInterviewScheduledEmail.mockResolvedValue({ sent: true });
+    sendInterviewCancelledEmail.mockResolvedValue({ sent: true });
+    sendEmployerInterviewCancelledEmail.mockResolvedValue({ sent: true });
+    sendApplicationDecisionEmail.mockResolvedValue({ sent: true });
+    sendEmployerApplicationDecisionEmail.mockResolvedValue({ sent: true });
+  });
+
   // applyForJob
-  // ────────────────────────────────────────────────────────────────────
+
   describe('applyForJob', () => {
     test('should create an application successfully', async () => {
       const job = makeJob();
@@ -199,9 +224,8 @@ describe('Application Service — Unit Tests', () => {
     });
   });
 
-  // ────────────────────────────────────────────────────────────────────
   // withdrawApplication
-  // ────────────────────────────────────────────────────────────────────
+
   describe('withdrawApplication', () => {
     test('should withdraw a pending application successfully', async () => {
       const app = makeApplication({ status: 'pending' });
@@ -246,10 +270,13 @@ describe('Application Service — Unit Tests', () => {
     });
   });
 
-  // ────────────────────────────────────────────────────────────────────
   // updateApplicationStatus
-  // ────────────────────────────────────────────────────────────────────
+
   describe('updateApplicationStatus', () => {
+    beforeEach(() => {
+      sendApplicationDecisionEmail.mockClear();
+    });
+
     test.each([
       ['pending', 'reviewed'],
       ['pending', 'shortlisted'],
@@ -326,11 +353,99 @@ describe('Application Service — Unit Tests', () => {
         updateApplicationStatus(applicationId, employerId, 'reviewed')
       ).rejects.toMatchObject({ statusCode: 404 });
     });
+
+    test('should not send decision email when transitioning to reviewed', async () => {
+      const app = makeApplication({ status: 'pending' });
+      mockApplicationModel.findById.mockResolvedValue(app);
+
+      await updateApplicationStatus(applicationId, employerId, 'reviewed');
+
+      expect(sendApplicationDecisionEmail).not.toHaveBeenCalled();
+    });
+
+    test('should send decision email when transitioning to accepted', async () => {
+      const app = makeApplication({ status: 'shortlisted' });
+      app.populate = jest.fn().mockImplementation(async function mockPop() {
+        this.jobSeekerId = {
+          email: 'seeker@test.com',
+          firstName: 'Jane',
+          lastName: 'Doe',
+        };
+        this.jobId = { title: 'Backend Developer' };
+        this.employerId = {
+          firstName: 'Acme',
+          lastName: 'Recruiter',
+          email: 'employer@test.com',
+        };
+        return this;
+      });
+      mockApplicationModel.findById.mockResolvedValue(app);
+
+      await updateApplicationStatus(applicationId, employerId, 'accepted');
+
+      expect(sendApplicationDecisionEmail).toHaveBeenCalledTimes(1);
+      expect(sendApplicationDecisionEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: 'seeker@test.com',
+          outcome: 'accepted',
+          jobTitle: 'Backend Developer',
+          seekerName: 'Jane Doe',
+          employerName: 'Acme Recruiter',
+          applicationUrl: expect.stringContaining(`/my-applications/${applicationId}`),
+        })
+      );
+      expect(sendEmployerApplicationDecisionEmail).toHaveBeenCalledTimes(1);
+      expect(sendEmployerApplicationDecisionEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: 'employer@test.com',
+          outcome: 'accepted',
+          seekerName: 'Jane Doe',
+          employerName: 'Acme Recruiter',
+          employerApplicationUrl: expect.stringContaining(
+            `/employer/applications/${applicationId}`
+          ),
+        })
+      );
+    });
+
+    test('should send decision email when transitioning to rejected', async () => {
+      const app = makeApplication({ status: 'shortlisted' });
+      app.populate = jest.fn().mockImplementation(async function mockPop() {
+        this.jobSeekerId = {
+          email: 'seeker2@test.com',
+          firstName: 'John',
+          lastName: 'Smith',
+        };
+        this.jobId = { title: 'QA Engineer' };
+        this.employerId = {
+          firstName: 'Hire',
+          lastName: 'Co',
+          email: 'hireco@test.com',
+        };
+        return this;
+      });
+      mockApplicationModel.findById.mockResolvedValue(app);
+
+      await updateApplicationStatus(applicationId, employerId, 'rejected');
+
+      expect(sendApplicationDecisionEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: 'seeker2@test.com',
+          outcome: 'rejected',
+          jobTitle: 'QA Engineer',
+        })
+      );
+      expect(sendEmployerApplicationDecisionEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: 'hireco@test.com',
+          outcome: 'rejected',
+        })
+      );
+    });
   });
 
-  // ────────────────────────────────────────────────────────────────────
   // getMyApplications
-  // ────────────────────────────────────────────────────────────────────
+
   describe('getMyApplications', () => {
     test('should return paginated applications with defaults', async () => {
       const apps = [makeApplication(), makeApplication({ _id: oid() })];
@@ -402,9 +517,8 @@ describe('Application Service — Unit Tests', () => {
     });
   });
 
-  // ────────────────────────────────────────────────────────────────────
   // getJobApplications
-  // ────────────────────────────────────────────────────────────────────
+
   describe('getJobApplications', () => {
     test('should return applications when employer owns the job', async () => {
       mockJobModel.findById.mockResolvedValue(makeJob());
@@ -448,9 +562,8 @@ describe('Application Service — Unit Tests', () => {
     });
   });
 
-  // ────────────────────────────────────────────────────────────────────
   // getApplicationById
-  // ────────────────────────────────────────────────────────────────────
+
   describe('getApplicationById', () => {
     /**
      * Build a thenable Mongoose query chain so that
@@ -534,9 +647,8 @@ describe('Application Service — Unit Tests', () => {
     });
   });
 
-  // ────────────────────────────────────────────────────────────────────
   // getApplicationStats
-  // ────────────────────────────────────────────────────────────────────
+
   describe('getApplicationStats', () => {
     test('should return correct per-status counts and total', async () => {
       mockJobModel.findById.mockResolvedValue(makeJob());
@@ -587,9 +699,8 @@ describe('Application Service — Unit Tests', () => {
     });
   });
 
-  // ────────────────────────────────────────────────────────────────────
   // checkApplicationEligibility
-  // ────────────────────────────────────────────────────────────────────
+
   describe('checkApplicationEligibility', () => {
     test('should return hasAcceptedApplication true when an accepted application exists', async () => {
       const app = makeApplication({ status: 'accepted' });

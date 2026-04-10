@@ -1,6 +1,37 @@
 import Application from './application.model.js';
 import Job from '../jobs/job.model.js';
+import User from '../users/user.model.js';
 import HttpException from '../../models/http-exception.js';
+import envConfig from '../../config/env.config.js';
+import logger from '../../config/logger.config.js';
+import { generateJitsiRoomName } from '../../utils/jitsiRoom.js';
+import {
+  sendInterviewScheduledEmail,
+  sendEmployerInterviewScheduledEmail,
+  sendInterviewCancelledEmail,
+  sendEmployerInterviewCancelledEmail,
+  sendApplicationDecisionEmail,
+  sendEmployerApplicationDecisionEmail,
+} from '../../services/email.service.js';
+
+/** Populated fields returned to clients / used in notifications */
+const JOB_SELECT_BASIC = 'title category status';
+const JOB_SELECT_SEEKER = 'title category status employmentType location';
+const EMPLOYER_SELECT = 'firstName lastName email phone companyName companyWebsite';
+const SEEKER_SELECT = 'firstName lastName email phone skills';
+const SEEKER_SELECT_EMPLOYER = 'firstName lastName email phone skills ratingStats';
+
+/**
+ * Company / organization label for the employer posting the job (fallback to contact name)
+ * @param {object|null|undefined} employer - populated User (employer)
+ * @returns {string}
+ */
+const employerCompanyDisplay = (employer) => {
+  if (!employer || typeof employer !== 'object') return '';
+  const cn = employer.companyName?.trim();
+  if (cn) return cn;
+  return [employer.firstName, employer.lastName].filter(Boolean).join(' ') || '';
+};
 
 /**
  * Application Service
@@ -27,7 +58,7 @@ const STATUS_TRANSITIONS = {
  * @returns {Object} Created application
  */
 export const applyForJob = async (jobSeekerId, applicationData) => {
-  const { jobId, coverLetter, resumeUrl } = applicationData;
+  const { jobId, coverLetter, resumeUrl, cvId } = applicationData;
 
   // Validate: the Job exists
   const job = await Job.findById(jobId);
@@ -45,22 +76,36 @@ export const applyForJob = async (jobSeekerId, applicationData) => {
     throw new HttpException(400, 'You cannot apply to your own job posting');
   }
 
+  // Resolve CV from the user's profile if cvId is provided
+  let resolvedResumeUrl = resumeUrl;
+  if (cvId) {
+    const user = await User.findById(jobSeekerId).select('cvs');
+    if (!user) {
+      throw new HttpException(404, 'User not found');
+    }
+    const selectedCv = user.cvs.id(cvId);
+    if (!selectedCv) {
+      throw new HttpException(404, 'Selected CV not found in your profile');
+    }
+    resolvedResumeUrl = selectedCv.url;
+  }
+
   // Create the application
   try {
     const application = await Application.create({
       jobId,
       jobSeekerId,
-      employerId: job.employerId, // Auto-populate from Job document
+      employerId: job.employerId,
       coverLetter,
-      resumeUrl,
+      resumeUrl: resolvedResumeUrl,
       status: 'pending',
     });
 
     // Populate related fields before returning
     await application.populate([
-      { path: 'jobId', select: 'title category status' },
-      { path: 'jobSeekerId', select: 'firstName lastName email skills' },
-      { path: 'employerId', select: 'firstName lastName email' },
+      { path: 'jobId', select: JOB_SELECT_BASIC },
+      { path: 'jobSeekerId', select: SEEKER_SELECT },
+      { path: 'employerId', select: EMPLOYER_SELECT },
     ]);
 
     return application;
@@ -83,9 +128,9 @@ export const applyForJob = async (jobSeekerId, applicationData) => {
 export const getApplicationById = async (applicationId, requestingUserId, requestingUserRole) => {
   const application = await Application.findById(applicationId)
     .active()
-    .populate('jobId', 'title category status')
-    .populate('jobSeekerId', 'firstName lastName email skills')
-    .populate('employerId', 'firstName lastName email');
+    .populate('jobId', JOB_SELECT_SEEKER)
+    .populate('jobSeekerId', SEEKER_SELECT)
+    .populate('employerId', EMPLOYER_SELECT);
 
   if (!application) {
     throw new HttpException(404, 'Application not found');
@@ -135,8 +180,8 @@ export const getMyApplications = async (jobSeekerId, filters = {}) => {
   const [applications, total] = await Promise.all([
     Application.find(query)
       .active()
-      .populate('jobId', 'title category status')
-      .populate('employerId', 'firstName lastName email')
+      .populate('jobId', JOB_SELECT_BASIC)
+      .populate('employerId', EMPLOYER_SELECT)
       .sort(sort)
       .skip(skip)
       .limit(limit),
@@ -184,8 +229,8 @@ export const getJobApplications = async (jobId, employerId, filters = {}) => {
   const [applications, total] = await Promise.all([
     Application.find(query)
       .active()
-      .populate('jobSeekerId', 'firstName lastName email skills ratingStats')
-      .populate('jobId', 'title category status')
+      .populate('jobSeekerId', SEEKER_SELECT_EMPLOYER)
+      .populate('jobId', JOB_SELECT_BASIC)
       .sort(sort)
       .skip(skip)
       .limit(limit),
@@ -259,10 +304,67 @@ export const updateApplicationStatus = async (
 
   // Populate and return
   await application.populate([
-    { path: 'jobId', select: 'title category status' },
-    { path: 'jobSeekerId', select: 'firstName lastName email skills' },
-    { path: 'employerId', select: 'firstName lastName email' },
+    { path: 'jobId', select: JOB_SELECT_BASIC },
+    { path: 'jobSeekerId', select: SEEKER_SELECT },
+    { path: 'employerId', select: EMPLOYER_SELECT },
   ]);
+
+  if (newStatus === 'accepted' || newStatus === 'rejected') {
+    const seekerEmail = application.jobSeekerId?.email;
+    const seekerPhone = application.jobSeekerId?.phone;
+    const seekerName = [application.jobSeekerId?.firstName, application.jobSeekerId?.lastName]
+      .filter(Boolean)
+      .join(' ');
+    const employerName = [application.employerId?.firstName, application.employerId?.lastName]
+      .filter(Boolean)
+      .join(' ');
+    const employerEmail = application.employerId?.email;
+    const employerPhone = application.employerId?.phone;
+    const companyDisplayName = employerCompanyDisplay(application.employerId);
+    const jobTitle = application.jobId?.title || 'a position';
+    const jobCategory = application.jobId?.category;
+    const jobListingStatus = application.jobId?.status;
+    const baseUrl = (envConfig.frontendUrl || 'http://localhost:5173').replace(/\/$/, '');
+    const applicationUrl = `${baseUrl}/my-applications/${application._id}`;
+    const employerApplicationUrl = `${baseUrl}/employer/applications/${application._id}`;
+
+    if (seekerEmail) {
+      sendApplicationDecisionEmail({
+        to: seekerEmail,
+        seekerName,
+        seekerEmailOnFile: seekerEmail,
+        seekerPhone,
+        employerName,
+        employerEmail,
+        employerPhone,
+        companyDisplayName,
+        jobTitle,
+        jobCategory,
+        jobListingStatus,
+        outcome: newStatus,
+        applicationUrl,
+      }).catch((err) =>
+        logger.error('Failed to send application decision email', { err: err.message })
+      );
+    }
+    if (employerEmail && employerEmail !== seekerEmail) {
+      sendEmployerApplicationDecisionEmail({
+        to: employerEmail,
+        employerName,
+        seekerName,
+        seekerEmailOnFile: seekerEmail,
+        seekerPhone,
+        companyDisplayName,
+        jobTitle,
+        jobCategory,
+        jobListingStatus,
+        outcome: newStatus,
+        employerApplicationUrl,
+      }).catch((err) =>
+        logger.error('Failed to send employer application decision email', { err: err.message })
+      );
+    }
+  }
 
   return application;
 };
@@ -376,9 +478,9 @@ export const updateApplicationNotes = async (applicationId, jobSeekerId, notes) 
   await application.save();
 
   await application.populate([
-    { path: 'jobId', select: 'title category status' },
-    { path: 'jobSeekerId', select: 'firstName lastName email skills' },
-    { path: 'employerId', select: 'firstName lastName email' },
+    { path: 'jobId', select: JOB_SELECT_BASIC },
+    { path: 'jobSeekerId', select: SEEKER_SELECT },
+    { path: 'employerId', select: EMPLOYER_SELECT },
   ]);
 
   const applicationObj = application.toObject();
@@ -387,13 +489,21 @@ export const updateApplicationNotes = async (applicationId, jobSeekerId, notes) 
 };
 
 /**
- * Schedule (or update) an interview date for an application (employer action)
+ * Schedule (or update) an interview for an application (employer action)
  * @param {ObjectId} applicationId - Application ID
  * @param {ObjectId} employerId - Employer's user ID
- * @param {Date} interviewDate - Proposed interview date (must be in the future)
+ * @param {Object} interviewData - interviewDate, interviewType, optional duration/location fields
  * @returns {Object} Updated application
  */
-export const scheduleInterview = async (applicationId, employerId, interviewDate) => {
+export const scheduleInterview = async (applicationId, employerId, interviewData) => {
+  const {
+    interviewDate,
+    interviewType,
+    interviewDuration,
+    interviewLocation,
+    interviewLocationNotes,
+  } = interviewData;
+
   const application = await Application.findById(applicationId).active();
 
   if (!application) {
@@ -407,7 +517,6 @@ export const scheduleInterview = async (applicationId, employerId, interviewDate
     );
   }
 
-  // Interview scheduling only makes sense before a final decision is reached
   const finalStatuses = ['accepted', 'rejected', 'withdrawn'];
   if (finalStatuses.includes(application.status)) {
     throw new HttpException(
@@ -416,21 +525,265 @@ export const scheduleInterview = async (applicationId, employerId, interviewDate
     );
   }
 
-  // Guard against stale dates slipping past validation (e.g. clock skew)
+  if (application.status !== 'shortlisted') {
+    throw new HttpException(
+      400,
+      'Interviews can only be scheduled for shortlisted applications. Shortlist the candidate first.'
+    );
+  }
+
   if (new Date(interviewDate) <= new Date()) {
     throw new HttpException(400, 'Interview date must be in the future');
   }
 
   application.interviewDate = new Date(interviewDate);
+  application.interviewType = interviewType;
+  application.interviewDuration = interviewDuration ?? 30;
+
+  if (interviewType === 'virtual') {
+    if (!application.jitsiRoomName) {
+      application.jitsiRoomName = generateJitsiRoomName(applicationId);
+    }
+    application.interviewLocation = undefined;
+    application.interviewLocationNotes = undefined;
+  } else {
+    application.jitsiRoomName = undefined;
+    application.interviewLocation = interviewLocation;
+    application.interviewLocationNotes = interviewLocationNotes || undefined;
+  }
+
   await application.save();
 
   await application.populate([
-    { path: 'jobId', select: 'title category status' },
-    { path: 'jobSeekerId', select: 'firstName lastName email skills' },
-    { path: 'employerId', select: 'firstName lastName email' },
+    { path: 'jobId', select: JOB_SELECT_BASIC },
+    { path: 'jobSeekerId', select: SEEKER_SELECT },
+    { path: 'employerId', select: EMPLOYER_SELECT },
   ]);
 
+  const seekerEmail = application.jobSeekerId?.email;
+  const seekerPhone = application.jobSeekerId?.phone;
+  const seekerName = [application.jobSeekerId?.firstName, application.jobSeekerId?.lastName]
+    .filter(Boolean)
+    .join(' ');
+  const employerName = [application.employerId?.firstName, application.employerId?.lastName]
+    .filter(Boolean)
+    .join(' ');
+  const employerEmail = application.employerId?.email;
+  const employerPhone = application.employerId?.phone;
+  const companyDisplayName = employerCompanyDisplay(application.employerId);
+  const jobTitle = application.jobId?.title || 'a position';
+  const jobCategory = application.jobId?.category;
+  const jobListingStatus = application.jobId?.status;
+
+  const baseUrl = (envConfig.frontendUrl || 'http://localhost:5173').replace(/\/$/, '');
+  const joinUrl = interviewType === 'virtual' ? `${baseUrl}/interview/${applicationId}` : undefined;
+  const viewApplicationUrl = `${baseUrl}/my-applications/${applicationId}`;
+
+  if (seekerEmail) {
+    sendInterviewScheduledEmail({
+      to: seekerEmail,
+      seekerName,
+      seekerEmailOnFile: seekerEmail,
+      seekerPhone,
+      employerName,
+      employerEmail,
+      employerPhone,
+      companyDisplayName,
+      jobTitle,
+      jobCategory,
+      jobListingStatus,
+      interviewDate: application.interviewDate,
+      interviewType,
+      interviewDuration: application.interviewDuration,
+      interviewLocation: application.interviewLocation,
+      interviewLocationNotes: application.interviewLocationNotes,
+      joinUrl,
+      applicationId,
+      viewApplicationUrl,
+    }).catch((err) => logger.error('Failed to send interview email', { err: err.message }));
+  }
+  if (employerEmail && employerEmail !== seekerEmail) {
+    sendEmployerInterviewScheduledEmail({
+      to: employerEmail,
+      employerName,
+      seekerName,
+      seekerEmailOnFile: seekerEmail,
+      seekerPhone,
+      companyDisplayName,
+      jobTitle,
+      jobCategory,
+      jobListingStatus,
+      interviewDate: application.interviewDate,
+      interviewType,
+      interviewDuration: application.interviewDuration,
+      interviewLocation: application.interviewLocation,
+      interviewLocationNotes: application.interviewLocationNotes,
+      joinUrl,
+      applicationId,
+      manageApplicationUrl: `${baseUrl}/employer/applications/${applicationId}`,
+    }).catch((err) =>
+      logger.error('Failed to send employer interview email', { err: err.message })
+    );
+  }
+
   return application;
+};
+
+/**
+ * Cancel a scheduled interview (employer only). Clears all interview fields and emails the seeker.
+ * @param {ObjectId} applicationId
+ * @param {ObjectId} employerId
+ * @returns {Promise<Object>} Updated application (populated)
+ */
+export const cancelInterview = async (applicationId, employerId) => {
+  const application = await Application.findById(applicationId).active();
+
+  if (!application) {
+    throw new HttpException(404, 'Application not found');
+  }
+
+  if (application.employerId.toString() !== employerId.toString()) {
+    throw new HttpException(403, 'You are not authorized to cancel this interview');
+  }
+
+  if (!application.interviewDate) {
+    throw new HttpException(400, 'No interview is scheduled for this application');
+  }
+
+  await Application.updateOne(
+    { _id: applicationId, isActive: true },
+    {
+      $unset: {
+        interviewDate: '',
+        interviewType: '',
+        jitsiRoomName: '',
+        interviewLocation: '',
+        interviewLocationNotes: '',
+        interviewDuration: '',
+      },
+    }
+  );
+
+  const updated = await Application.findById(applicationId)
+    .active()
+    .populate([
+      { path: 'jobId', select: JOB_SELECT_BASIC },
+      { path: 'jobSeekerId', select: SEEKER_SELECT },
+      { path: 'employerId', select: EMPLOYER_SELECT },
+    ]);
+
+  const seekerEmail = updated.jobSeekerId?.email;
+  const seekerPhone = updated.jobSeekerId?.phone;
+  const seekerName = [updated.jobSeekerId?.firstName, updated.jobSeekerId?.lastName]
+    .filter(Boolean)
+    .join(' ');
+  const employerEmail = updated.employerId?.email;
+  const employerPhone = updated.employerId?.phone;
+  const employerName = [updated.employerId?.firstName, updated.employerId?.lastName]
+    .filter(Boolean)
+    .join(' ');
+  const companyDisplayName = employerCompanyDisplay(updated.employerId);
+  const jobTitle = updated.jobId?.title || 'a position';
+  const jobCategory = updated.jobId?.category;
+  const jobListingStatus = updated.jobId?.status;
+  const baseUrl = (envConfig.frontendUrl || 'http://localhost:5173').replace(/\/$/, '');
+  const viewApplicationUrl = `${baseUrl}/my-applications/${applicationId}`;
+
+  if (seekerEmail) {
+    sendInterviewCancelledEmail({
+      to: seekerEmail,
+      seekerName,
+      seekerEmailOnFile: seekerEmail,
+      seekerPhone,
+      employerName,
+      employerEmail,
+      employerPhone,
+      companyDisplayName,
+      jobTitle,
+      jobCategory,
+      jobListingStatus,
+      viewApplicationUrl,
+    }).catch((err) =>
+      logger.error('Failed to send interview cancelled email', { err: err.message })
+    );
+  }
+  if (employerEmail && employerEmail !== seekerEmail) {
+    sendEmployerInterviewCancelledEmail({
+      to: employerEmail,
+      employerName,
+      seekerName,
+      seekerEmailOnFile: seekerEmail,
+      seekerPhone,
+      companyDisplayName,
+      jobTitle,
+      jobCategory,
+      jobListingStatus,
+      manageApplicationUrl: `${baseUrl}/employer/applications/${applicationId}`,
+    }).catch((err) =>
+      logger.error('Failed to send employer interview cancelled email', { err: err.message })
+    );
+  }
+
+  return updated;
+};
+
+/**
+ * Join context for embedding Jitsi (employer or applicant on this application only)
+ * @param {ObjectId} applicationId
+ * @param {ObjectId} userId
+ * @returns {Promise<Object>}
+ */
+export const getInterviewJoinContext = async (applicationId, userId) => {
+  const application = await Application.findById(applicationId)
+    .active()
+    .populate('jobId', 'title')
+    .populate('jobSeekerId', 'firstName lastName')
+    .populate('employerId', 'firstName lastName');
+
+  if (!application) {
+    throw new HttpException(404, 'Application not found');
+  }
+
+  const employerRef = application.employerId;
+  const seekerRef = application.jobSeekerId;
+  const employerIdStr = employerRef?._id?.toString?.() ?? employerRef?.toString?.();
+  const seekerIdStr = seekerRef?._id?.toString?.() ?? seekerRef?.toString?.();
+  const userIdStr = userId.toString();
+
+  const isEmployer = employerIdStr === userIdStr;
+  const isSeeker = seekerIdStr === userIdStr;
+
+  if (!isEmployer && !isSeeker) {
+    throw new HttpException(403, 'You are not authorized to join this interview');
+  }
+
+  if (!application.interviewDate) {
+    throw new HttpException(400, 'No interview has been scheduled for this application');
+  }
+
+  if (application.interviewType !== 'virtual') {
+    throw new HttpException(400, 'This is an in-person interview — no video room available');
+  }
+
+  if (!application.jitsiRoomName) {
+    throw new HttpException(
+      400,
+      'Video room is not set for this interview. The employer may need to reschedule as a virtual interview.'
+    );
+  }
+
+  const user = isEmployer ? employerRef : seekerRef;
+  const displayName = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'Participant';
+
+  return {
+    domain: process.env.JITSI_DOMAIN || 'meet.jit.si',
+    roomName: application.jitsiRoomName,
+    displayName,
+    jobTitle: application.jobId?.title || 'Interview',
+    interviewDate: application.interviewDate,
+    interviewDuration: application.interviewDuration,
+    role: isEmployer ? 'employer' : 'job_seeker',
+  };
 };
 
 /**
@@ -462,5 +815,7 @@ export default {
   getApplicationStats,
   updateApplicationNotes,
   scheduleInterview,
+  cancelInterview,
+  getInterviewJoinContext,
   checkApplicationEligibility,
 };

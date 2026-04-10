@@ -5,7 +5,7 @@
  *   description: Job application workflow and status management
  */
 
-// ─── Public endpoints ───
+// Public endpoints
 
 /**
  * @swagger
@@ -57,7 +57,7 @@
  *         description: Invalid job ID or user ID format
  */
 
-// ─── Protected endpoints ───
+// Protected endpoints
 
 /**
  * @swagger
@@ -299,6 +299,69 @@
 
 /**
  * @swagger
+ * /api/applications/{id}/interview-join-context:
+ *   get:
+ *     tags: [Applications]
+ *     summary: Get virtual interview join context (Jitsi)
+ *     description: |
+ *       Returns domain, room name, and display name for embedding Jitsi Meet.
+ *       Only the employer or the applicant on this application may call this.
+ *       Requires a scheduled **virtual** interview with a `jitsiRoomName`.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Application ID
+ *     responses:
+ *       200:
+ *         description: Join context retrieved
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Interview join context retrieved
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     domain:
+ *                       type: string
+ *                       example: meet.jit.si
+ *                     roomName:
+ *                       type: string
+ *                     displayName:
+ *                       type: string
+ *                     jobTitle:
+ *                       type: string
+ *                     interviewDate:
+ *                       type: string
+ *                       format: date-time
+ *                     interviewDuration:
+ *                       type: integer
+ *                     role:
+ *                       type: string
+ *                       enum: [employer, job_seeker]
+ *       400:
+ *         description: No interview scheduled, not virtual, or room not configured
+ *       401:
+ *         description: Not authenticated
+ *       403:
+ *         description: User is neither employer nor applicant on this application
+ *       404:
+ *         description: Application not found
+ */
+
+/**
+ * @swagger
  * /api/applications/{id}:
  *   get:
  *     tags: [Applications]
@@ -352,6 +415,8 @@
  *       - pending → reviewed, shortlisted, accepted, rejected
  *       - reviewed → shortlisted, accepted, rejected
  *       - shortlisted → accepted, rejected
+ *
+ *       When the new status is **accepted** or **rejected**, the job seeker receives an email (if SMTP is configured), asynchronously.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -467,11 +532,15 @@
 
 /**
  * @swagger
- * /api/applications/{id}/interview-date:
+ * /api/applications/{id}/interview:
  *   patch:
  *     tags: [Applications]
- *     summary: Schedule or update interview date
- *     description: Set or update the interview date for an application. Employer only. Date must be in the future.
+ *     summary: Schedule or update interview
+ *     description: |
+ *       Set or update interview details. Employer only. Application must be **shortlisted**.
+ *       Date must be in the future.
+ *       For `virtual`, a stable `jitsiRoomName` is generated on first schedule.
+ *       For `in_person`, `interviewLocation` is required.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -487,17 +556,45 @@
  *         application/json:
  *           schema:
  *             type: object
- *             required: [interviewDate]
+ *             required: [interviewDate, interviewType]
  *             properties:
  *               interviewDate:
  *                 type: string
  *                 format: date-time
  *                 description: ISO 8601 date; must be in the future
- *           example:
- *             interviewDate: "2025-03-15T10:00:00.000Z"
+ *               interviewType:
+ *                 type: string
+ *                 enum: [virtual, in_person]
+ *               interviewDuration:
+ *                 type: integer
+ *                 minimum: 15
+ *                 maximum: 480
+ *                 description: Minutes (default 30)
+ *               interviewLocation:
+ *                 type: string
+ *                 maxLength: 300
+ *                 description: Required when interviewType is in_person
+ *               interviewLocationNotes:
+ *                 type: string
+ *                 maxLength: 500
+ *           examples:
+ *             virtual:
+ *               summary: Virtual interview
+ *               value:
+ *                 interviewDate: "2026-03-15T10:00:00.000Z"
+ *                 interviewType: virtual
+ *                 interviewDuration: 45
+ *             inPerson:
+ *               summary: In-person interview
+ *               value:
+ *                 interviewDate: "2026-03-15T10:00:00.000Z"
+ *                 interviewType: in_person
+ *                 interviewDuration: 30
+ *                 interviewLocation: "123 Main St, Colombo"
+ *                 interviewLocationNotes: "Reception desk, 3rd floor"
  *     responses:
  *       200:
- *         description: Interview date scheduled successfully
+ *         description: Interview scheduled successfully
  *         content:
  *           application/json:
  *             schema:
@@ -508,14 +605,61 @@
  *                   example: true
  *                 message:
  *                   type: string
- *                   example: Interview date scheduled successfully
+ *                   example: Interview scheduled successfully
  *                 data:
  *                   type: object
  *                   properties:
  *                     application:
  *                       $ref: '#/components/schemas/Application'
  *       400:
- *         description: Interview date must be in the future or validation error
+ *         description: Validation error or invalid application state
+ *       401:
+ *         description: Not authenticated
+ *       403:
+ *         description: Not the job employer
+ *       404:
+ *         description: Application not found
+ */
+
+/**
+ * @swagger
+ * /api/applications/{id}/interview:
+ *   delete:
+ *     tags: [Applications]
+ *     summary: Cancel scheduled interview
+ *     description: |
+ *       Employer only. Removes interview date, type, Jitsi room, location, and duration.
+ *       The applicant is notified by email (no SMS).
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Application ID
+ *     responses:
+ *       200:
+ *         description: Interview cancelled successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Interview cancelled successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     application:
+ *                       $ref: '#/components/schemas/Application'
+ *       400:
+ *         description: No interview scheduled
  *       401:
  *         description: Not authenticated
  *       403:

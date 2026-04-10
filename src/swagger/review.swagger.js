@@ -5,7 +5,7 @@
  *   description: Review & Rating system with trust scores, badges, and moderation
  */
 
-// ─── Public endpoints ───
+// Public endpoints
 
 /**
  * @swagger
@@ -212,6 +212,42 @@
 
 /**
  * @swagger
+ * /api/reviews/sent/{userId}:
+ *   get:
+ *     tags: [Reviews]
+ *     summary: Get reviews sent by a user
+ *     description: Retrieve paginated reviews authored by the specified user.
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the reviewer
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *       - in: query
+ *         name: sort
+ *         schema:
+ *           type: string
+ *           default: -createdAt
+ *     responses:
+ *       200:
+ *         description: Sent reviews retrieved successfully
+ *       400:
+ *         description: Invalid user ID format
+ */
+
+/**
+ * @swagger
  * /api/reviews/{id}:
  *   get:
  *     tags: [Reviews]
@@ -243,7 +279,7 @@
  *         description: Review not found
  */
 
-// ─── Protected endpoints ───
+// Protected endpoints
 
 /**
  * @swagger
@@ -265,10 +301,10 @@
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             type: object
- *             required: [revieweeId, jobId, reviewerType, rating]
+ *             required: [revieweeId, jobId, rating]
  *             properties:
  *               revieweeId:
  *                 type: string
@@ -304,6 +340,12 @@
  *                 maximum: 5
  *               wouldRecommend:
  *                 type: boolean
+ *               reviewImages:
+ *                 type: array
+ *                 description: Optional review image attachments (max 5)
+ *                 items:
+ *                   type: string
+ *                   format: binary
  *           example:
  *             revieweeId: "675c9d4c8e9a1b2c3d4e5f67"
  *             jobId: "675c9d4c8e9a1b2c3d4e5f68"

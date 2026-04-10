@@ -11,11 +11,11 @@ import { SERVER_CONFIG, HTTP_STATUS } from '../config/server.config.js';
  * Apply body parser middleware to Express app
  */
 export const configureBodyParser = (app) => {
-  // Parse JSON bodies
+  // Parse JSON bodies (preserve raw body for webhook signature verification)
   app.use(
     express.json({
       limit: SERVER_CONFIG.REQUEST_SIZE_LIMIT,
-      strict: true, // Only parse objects and arrays
+      strict: true,
     })
   );
 

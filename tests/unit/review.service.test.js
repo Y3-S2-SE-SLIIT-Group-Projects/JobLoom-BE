@@ -52,6 +52,18 @@ describe('Rating Utilities - Unit Tests', () => {
       const result = calculateWeightedRating(criteria);
       expect(result).toBe(4.3);
     });
+
+    test('should handle string ratings from multipart form submissions', () => {
+      const criteria = {
+        rating: '5',
+        workQuality: '4',
+        communication: '5',
+      };
+
+      const result = calculateWeightedRating(criteria);
+      expect(result).toBe(4.7);
+      expect(result).toBeLessThanOrEqual(5);
+    });
   });
 
   describe('calculateTrustScore', () => {

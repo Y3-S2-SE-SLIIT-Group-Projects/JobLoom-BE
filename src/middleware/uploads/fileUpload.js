@@ -1,18 +1,29 @@
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Absolute path to the uploads root (project root/uploads)
+const UPLOADS_ROOT = path.join(__dirname, '../../../uploads');
 
 const storage = multer.diskStorage({
   destination(req, file, cb) {
-    let uploadPath = 'uploads/';
+    let subDir;
 
     if (file.fieldname === 'cv') {
-      uploadPath += 'cvs/';
+      subDir = 'cvs';
     } else if (file.fieldname === 'profileImage') {
-      uploadPath += 'profiles/';
+      subDir = 'profiles';
+    } else if (file.fieldname === 'reviewImages') {
+      subDir = 'reviews';
     } else {
-      uploadPath += 'others/';
+      subDir = 'others';
     }
+
+    const uploadPath = path.join(UPLOADS_ROOT, subDir);
 
     // Ensure directory exists
     fs.mkdirSync(uploadPath, { recursive: true });
@@ -25,20 +36,26 @@ const storage = multer.diskStorage({
 });
 
 function checkFileType(file, cb) {
-  const filetypes = /jpg|jpeg|png|pdf|doc|docx/;
-  const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
-  const mimetype = filetypes.test(file.mimetype);
+  const allowedExt = ['.jpg', '.jpeg', '.png', '.pdf', '.doc', '.docx'];
+  const ext = path.extname(file.originalname).toLowerCase();
 
-  if (extname && mimetype) {
-    return cb(null, true);
-  } else {
-    cb(new Error('Images and Documents only!'));
-  }
+  const allowedMime = [
+    'image/jpeg',
+    'image/png',
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  ];
+
+  const ok = allowedExt.includes(ext) && allowedMime.includes(file.mimetype);
+
+  if (ok) return cb(null, true);
+  cb(new Error('Only JPG, JPEG, PNG, PDF, DOC, DOCX are allowed!'));
 }
 
 const upload = multer({
   storage,
-  limits: { fileSize: 5000000 }, // 5MB limit
+  limits: { fileSize: 15 * 1024 * 1024 }, // 15MB
   fileFilter: function (req, file, cb) {
     checkFileType(file, cb);
   },

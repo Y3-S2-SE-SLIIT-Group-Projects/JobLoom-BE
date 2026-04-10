@@ -8,13 +8,13 @@ A complete MERN stack backend application with a modular, scalable architecture 
 - **MongoDB with Mongoose**: MongoDB database integration with Mongoose ODM
 - **JWT Authentication**: Secure token-based authentication system
 - **User Management**: Complete user registration, login, and profile management
-- **Job Management**: Job posting and search functionality (basic)
+- **Job Management**: Full job posting, search, filtering, AI-powered description generation, and geospatial nearby search
 - **Application Management**: Job application system with:
   - Apply for jobs with cover letter and resume
   - Status lifecycle (pending → reviewed → shortlisted → accepted/rejected)
   - Application withdrawal with reason tracking
   - Status audit trail (statusHistory)
-  - Employer notes and interview scheduling
+  - Employer notes and interview scheduling (Jitsi integration)
   - Role-based access control (job seekers vs employers)
   - Application statistics for employer dashboard
   - Soft-delete support
@@ -25,6 +25,7 @@ A complete MERN stack backend application with a modular, scalable architecture 
   - Badge system (Elite, Top Rated, Trusted, Rising Star)
   - Review moderation and reporting
   - Automatic user rating statistics updates
+- **Admin Dashboard**: User and job management with platform-wide statistics
 - **Winston Logger**: Advanced logging with multiple transports and log levels
 - **HTTP Interceptor**: Request/response logging with unique request IDs
 - **Exception Filters**: Global error handling with custom exception classes
@@ -33,6 +34,7 @@ A complete MERN stack backend application with a modular, scalable architecture 
 - **Modular Architecture**: Clean separation of concerns with controllers, services, and models
 - **Comprehensive Testing**: Unit, integration, and performance tests with Jest, Supertest, and k6
 - **SMS Gateway Integration**: OTP-based user verification and password reset via Text.lk API
+- **Third-Party Integrations**: Cloudinary (file uploads), Cohere AI (job descriptions), Nodemailer (email), Jitsi (video interviews)
 
 ## Project Structure
 
@@ -40,15 +42,25 @@ A complete MERN stack backend application with a modular, scalable architecture 
 src/
 ├── config/
 │   ├── database.js              # MongoDB connection configuration
+│   ├── cloudinary.js            # Cloudinary upload configuration
 │   ├── env.config.js            # Environment configuration service
-│   └── logger.config.js         # Winston logger setup
+│   ├── logger.config.js         # Winston logger setup
+│   └── server.config.js         # HTTP status codes and constants
 ├── middleware/
+│   ├── auth/
+│   │   ├── authMiddleware.js    # JWT authentication (protect)
+│   │   └── roleMiddleware.js    # Role-based authorization (authorize)
+│   ├── uploads/
+│   │   └── fileUpload.js        # Multer file upload middleware
 │   ├── http-interceptor.js      # Request/response interceptor
 │   ├── error-handler.js         # Global exception filter
-│   ├── async-handler.js         # Async error wrapper
-│   ├── auth.middleware.js       # JWT authentication middleware
+│   ├── auth.middleware.js       # JWT authentication (lightweight)
 │   ├── role.middleware.js       # Role-based access control
-│   └── validation.middleware.js # Request validation middleware
+│   ├── validation.middleware.js # Request validation middleware
+│   ├── security.middleware.js   # Helmet security headers
+│   ├── cors.middleware.js       # CORS configuration
+│   ├── body-parser.middleware.js# Body parsing middleware
+│   └── request-logger.middleware.js # Morgan request logging
 ├── models/
 │   └── http-exception.js        # Custom exception classes
 ├── modules/
@@ -58,37 +70,76 @@ src/
 │   │   ├── user.service.js
 │   │   ├── user.routes.js
 │   │   └── user.validation.js
-│   ├── jobs/                    # Job Management Module (Basic)
+│   ├── jobs/                    # Job Management Module
 │   │   ├── job.model.js
-│   │   └── job.routes.js
-│   ├── applications/            # Application Management Module (COMPLETE)
+│   │   ├── job.controller.js
+│   │   ├── job.service.js
+│   │   ├── job.routes.js
+│   │   └── job.validation.js
+│   ├── applications/            # Application Management Module
 │   │   ├── application.model.js
 │   │   ├── application.controller.js
 │   │   ├── application.service.js
 │   │   ├── application.routes.js
 │   │   └── application.validation.js
-│   └── reviews/                 # Review & Rating Module (COMPLETE)
-│       ├── review.model.js
-│       ├── review.controller.js
-│       ├── review.service.js
-│       ├── review.routes.js
-│       └── review.validation.js
+│   ├── reviews/                 # Review & Rating Module
+│   │   ├── review.model.js
+│   │   ├── review.controller.js
+│   │   ├── review.service.js
+│   │   ├── review.repository.js
+│   │   ├── review.routes.js
+│   │   ├── review.validation.js
+│   │   └── rating-stats.model.js
+│   └── admin/                   # Admin Management Module
+│       ├── admin.controller.js
+│       ├── admin.service.js
+│       └── admin.routes.js
 ├── routes/
-│   ├── index.js                # Main router
+│   ├── index.js                 # Main API router
+│   ├── health.routes.js         # Health check endpoints
+│   ├── upload.route.js          # File upload endpoints
 │   └── hello/
 │       ├── hello.controller.js
 │       └── hello.service.js
+├── services/
+│   ├── email.service.js         # Nodemailer transactional email
+│   ├── sms.service.js           # Text.lk SMS gateway
+│   └── upload.service.js        # Cloudinary upload service
+├── swagger/
+│   ├── swagger.config.js        # OpenAPI 3.0 configuration
+│   ├── user.swagger.js
+│   ├── job.swagger.js
+│   ├── application.swagger.js
+│   ├── review.swagger.js
+│   ├── admin.swagger.js
+│   └── health.swagger.js
 ├── utils/
-│   ├── response.utils.js       # Standardized response helpers
-│   ├── jwt.utils.js            # JWT token utilities
-│   └── rating.utils.js         # Rating calculation utilities
-└── server.js                   # Main application entry point
+│   ├── response.utils.js        # Standardized response helpers
+│   ├── jwt.utils.js             # JWT token utilities
+│   ├── rating.utils.js          # Rating calculation utilities
+│   ├── jitsiRoom.js             # Jitsi room name generator
+│   └── llm.client.js            # Cohere AI client
+└── server.js                    # Main application entry point
 
 tests/
 ├── unit/
-│   └── review.service.test.js  # Unit tests for rating logic
-└── integration/
-    └── review.routes.test.js   # Integration tests for API
+│   ├── user.service.test.js
+│   ├── job.service.test.js
+│   ├── application.service.test.js
+│   ├── application.interview.service.test.js
+│   ├── review.service.test.js
+│   └── jitsiRoom.test.js
+├── integration/
+│   ├── user.routes.test.js
+│   ├── job.routes.test.js
+│   ├── application.routes.test.js
+│   └── review.routes.test.js
+├── e2e/
+│   └── api-quality-gate.spec.js
+├── performance/
+│   ├── user.load.js             # k6 user API load test
+│   └── job.load.js              # k6 job API load test
+└── setup.js                     # Shared test setup
 ```
 
 ## Prerequisites
@@ -96,13 +147,14 @@ tests/
 - Node.js (v18 or higher)
 - MongoDB (v4.4 or higher)
 - npm or yarn
+- k6 (for performance testing — [install guide](https://grafana.com/docs/k6/latest/set-up/install-k6/))
 
 ## Installation
 
 1. **Clone the repository**
 
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/Y3-S2-SE-SLIIT-Group-Projects/JobLoom-BE.git
    cd JobLoom-BE
    ```
 
@@ -168,12 +220,11 @@ The server will start on `http://localhost:3000`
 
 ### Health Check
 
-npm run l```
-GET /
-GET /health
-GET /healthz (liveness probe)
-GET /ready (readiness probe)
-
+```
+GET /              # API status and system information
+GET /health        # Health status
+GET /healthz       # Liveness probe (Kubernetes-ready)
+GET /ready         # Readiness probe (Kubernetes-ready)
 ```
 
 Returns API health status and system information.
@@ -185,10 +236,8 @@ Returns API health status and system information.
 ### Register User
 
 ```
-
 POST /api/users/register
-
-````
+```
 
 Register a new user account.
 
@@ -203,7 +252,7 @@ Register a new user account.
   "role": "job_seeker",
   "phone": "+94771234567"
 }
-````
+```
 
 **Response:**
 
@@ -324,10 +373,11 @@ Reset the user's password using the temporary reset token.
 }
 ```
 
-### Get User by ID
+### Get User Profile by ID
 
 ```
-GET /api/users/:id
+GET /api/users/profile/:id
+Authorization: Bearer <token>
 ```
 
 Get public user profile (for displaying reviewee info).
@@ -339,20 +389,167 @@ PUT /api/users/profile
 Authorization: Bearer <token>
 ```
 
-Update own user profile.
+Update own user profile (supports multipart for CV/image uploads).
+
+### Delete Account
+
+```
+DELETE /api/users/account
+Authorization: Bearer <token>
+```
+
+Delete authenticated user's account.
 
 ---
 
-## Job Application Management (Member 3's Component)
+## Job Management
+
+### Get All Jobs
+
+```
+GET /api/jobs?category=agriculture&status=open&search=farm&page=1&limit=20
+```
+
+List/filter jobs with full-text search, category/status filtering, sorting, and pagination.
+
+**Query Parameters:**
+
+- `search` (optional): Full-text search on title and description
+- `category` (optional): Filter by job category
+- `status` (optional): Filter by job status (open, closed, filled)
+- `employmentType` (optional): Filter by type (full_time, part_time, temporary, contract)
+- `salaryMin` / `salaryMax` (optional): Salary range filter
+- `page` (optional): Page number (default: 1)
+- `limit` (optional): Items per page (default: 20)
+- `sort` (optional): Sort field (default: -createdAt)
+
+### Get Nearby Jobs
+
+```
+GET /api/jobs/nearby?lat=6.9271&lng=79.8612&radius=50
+```
+
+Find jobs near a location using geospatial query (Mapbox integration).
+
+### Get Recommended Jobs
+
+```
+GET /api/jobs/recommendations
+Authorization: Bearer <token>
+```
+
+Get job recommendations based on user skills (protected).
+
+### Get Job by ID
+
+```
+GET /api/jobs/:id
+```
+
+Get single job details.
+
+### Generate Job Description (AI)
+
+```
+POST /api/jobs/generate-description
+Authorization: Bearer <token>  (Employer only)
+```
+
+Generate a job description using Cohere AI (third-party API integration).
+
+### Create Job
+
+```
+POST /api/jobs
+Authorization: Bearer <token>  (Employer only)
+```
+
+Create a new job posting.
+
+**Request Body:**
+
+```json
+{
+  "title": "Farm Worker",
+  "description": "Looking for experienced farm workers...",
+  "category": "agriculture",
+  "employmentType": "temporary",
+  "salaryAmount": 1500,
+  "salaryType": "daily",
+  "positions": 2,
+  "location": {
+    "address": "Colombo, Sri Lanka",
+    "coordinates": [79.8612, 6.9271]
+  }
+}
+```
+
+### Get Employer's Jobs
+
+```
+GET /api/jobs/employer/my-jobs
+Authorization: Bearer <token>  (Employer only)
+```
+
+List all jobs created by the authenticated employer.
+
+### Get Employer Stats
+
+```
+GET /api/jobs/employer/stats
+Authorization: Bearer <token>  (Employer only)
+```
+
+Get dashboard statistics (total jobs, open jobs, applications count).
+
+### Update Job
+
+```
+PUT /api/jobs/:id
+Authorization: Bearer <token>  (Employer only)
+```
+
+Update job details.
+
+### Close Job
+
+```
+PATCH /api/jobs/:id/close
+Authorization: Bearer <token>  (Employer only)
+```
+
+Close a job posting.
+
+### Mark Job as Filled
+
+```
+PATCH /api/jobs/:id/filled
+Authorization: Bearer <token>  (Employer only)
+```
+
+Mark a job as filled.
+
+### Delete Job (Soft Delete)
+
+```
+DELETE /api/jobs/:id
+Authorization: Bearer <token>  (Employer only)
+```
+
+Soft delete a job posting.
+
+---
+
+## Job Application Management
 
 ### Apply for a Job
 
 ```
 POST /api/applications
-Authorization: Bearer <token>
+Authorization: Bearer <token>  (Job Seeker only)
 ```
 
-Submit a job application. **Requires job_seeker role.**
+Submit a job application.
 
 **Request Body:**
 
@@ -407,18 +604,16 @@ GET /api/applications/:id
 Authorization: Bearer <token>
 ```
 
-Get single application details. **Accessible by the job seeker who applied, the employer who owns the job, or an admin.**
-
-**Note:** If the requester is the job seeker, `employerNotes` is stripped from the response.
+Get single application details. Accessible by the job seeker who applied, the employer who owns the job, or an admin.
 
 ### Get My Applications (Job Seeker)
 
 ```
 GET /api/applications/my-applications?status=pending&page=1&limit=20
-Authorization: Bearer <token>
+Authorization: Bearer <token>  (Job Seeker only)
 ```
 
-Get all applications for the authenticated job seeker. **Requires job_seeker role.**
+Get all applications for the authenticated job seeker.
 
 **Query Parameters:**
 
@@ -427,48 +622,23 @@ Get all applications for the authenticated job seeker. **Requires job_seeker rol
 - `limit` (optional): Items per page (default: 20, max: 100)
 - `sort` (optional): Sort field (default: -createdAt)
 
-**Response:**
-
-```json
-{
-  "success": true,
-  "message": "Applications retrieved successfully",
-  "data": {
-    "applications": [...],
-    "pagination": {
-      "total": 15,
-      "page": 1,
-      "limit": 20,
-      "pages": 1
-    }
-  }
-}
-```
-
 ### Get Job Applications (Employer)
 
 ```
 GET /api/applications/job/:jobId?status=pending&page=1&limit=20
-Authorization: Bearer <token>
+Authorization: Bearer <token>  (Employer only)
 ```
 
-Get all applications for a specific job. **Requires employer role.** The employer must own the job.
-
-**Query Parameters:**
-
-- `status` (optional): Filter by status
-- `page` (optional): Page number (default: 1)
-- `limit` (optional): Items per page (default: 20, max: 100)
-- `sort` (optional): Sort field (default: -createdAt)
+Get all applications for a specific job. The employer must own the job.
 
 ### Update Application Status (Employer)
 
 ```
 PATCH /api/applications/:id/status
-Authorization: Bearer <token>
+Authorization: Bearer <token>  (Employer only)
 ```
 
-Update the status of an application. **Requires employer role.**
+Update the status of an application.
 
 **Request Body:**
 
@@ -492,21 +662,42 @@ Update the status of an application. **Requires employer role.**
 | `rejected`     | _(final — no further transitions)_        |
 | `withdrawn`    | _(final — no further transitions)_        |
 
-**Business Rules:**
+### Update Employer Notes
 
-- Only the employer on the application can update the status
-- Invalid transitions return 400 with a descriptive error message
-- Each status change is recorded in `statusHistory` with timestamp and user ID
-- `reviewedAt` is automatically set on first transition to `reviewed`
+```
+PATCH /api/applications/:id/notes
+Authorization: Bearer <token>  (Employer only)
+```
+
+### Schedule Interview
+
+```
+PATCH /api/applications/:id/interview
+Authorization: Bearer <token>  (Employer only)
+```
+
+### Cancel Interview
+
+```
+DELETE /api/applications/:id/interview
+Authorization: Bearer <token>  (Employer only)
+```
+
+### Get Interview Join Context
+
+```
+GET /api/applications/:id/interview-join-context
+Authorization: Bearer <token>
+```
+
+Get Jitsi video interview room details.
 
 ### Withdraw Application (Job Seeker)
 
 ```
 PATCH /api/applications/:id/withdraw
-Authorization: Bearer <token>
+Authorization: Bearer <token>  (Job Seeker only)
 ```
-
-Withdraw a submitted application. **Requires job_seeker role.**
 
 **Request Body:**
 
@@ -516,36 +707,24 @@ Withdraw a submitted application. **Requires job_seeker role.**
 }
 ```
 
-**Business Rules:**
-
-- Only the job seeker who applied can withdraw
-- Can only withdraw from `pending`, `reviewed`, or `shortlisted` status
-- Cannot withdraw after being `accepted` or `rejected`
-
 ### Check Application Eligibility
 
 ```
 GET /api/applications/check/:jobId/:userId
 ```
 
-Check if a user has an accepted application for a job. **Public endpoint** used by the Review module for eligibility checks.
+Check if a user has an accepted application for a job (public, used for review eligibility).
 
-**Response:**
+### Get Job Application Stats (Employer)
 
-```json
-{
-  "success": true,
-  "message": "Application check completed",
-  "data": {
-    "hasAcceptedApplication": true,
-    "application": { ... }
-  }
-}
+```
+GET /api/applications/job/:jobId/stats
+Authorization: Bearer <token>  (Employer only)
 ```
 
 ---
 
-## Review & Rating System (Member 4's Component)
+## Review & Rating System
 
 ### Create Review
 
@@ -554,7 +733,7 @@ POST /api/reviews
 Authorization: Bearer <token>
 ```
 
-Submit a review after job completion. **Requires accepted application**.
+Submit a review after job completion. Requires accepted application.
 
 **Request Body:**
 
@@ -573,20 +752,11 @@ Submit a review after job completion. **Requires accepted application**.
 }
 ```
 
-**Business Rules:**
-
-- Can only review users you've worked with (accepted application required)
-- One review per job per user
-- Cannot review yourself
-- Rating is auto-calculated from criteria if multiple provided
-
 ### Get Review by ID
 
 ```
 GET /api/reviews/:id
 ```
-
-Get single review details.
 
 ### Update Review
 
@@ -595,13 +765,7 @@ PUT /api/reviews/:id
 Authorization: Bearer <token>
 ```
 
-Update own review.
-
-**Restrictions:**
-
-- Can only edit within 7 days of creation
-- Cannot change rating after 24 hours
-- Can only edit own reviews
+Update own review (within 7 days of creation; rating locked after 24 hours).
 
 ### Delete Review
 
@@ -610,7 +774,7 @@ DELETE /api/reviews/:id
 Authorization: Bearer <token>
 ```
 
-Delete own review (soft delete).
+Soft delete own review.
 
 ### Get Reviews for User
 
@@ -618,29 +782,17 @@ Delete own review (soft delete).
 GET /api/reviews/user/:userId?reviewerType=job_seeker&page=1&limit=20
 ```
 
-Get all reviews for a specific user (reviewee).
-
-**Query Parameters:**
-
-- `reviewerType` (optional): Filter by reviewer type (job_seeker, employer)
-- `page` (optional): Page number (default: 1)
-- `limit` (optional): Items per page (default: 20)
-
 ### Get Reviews for Job
 
 ```
 GET /api/reviews/job/:jobId
 ```
 
-Get all reviews related to a specific job.
-
 ### Get User Rating Statistics
 
 ```
 GET /api/reviews/stats/:userId
 ```
-
-Get comprehensive rating statistics for a user.
 
 **Response:**
 
@@ -651,13 +803,7 @@ Get comprehensive rating statistics for a user.
     "stats": {
       "averageRating": 4.5,
       "totalReviews": 12,
-      "ratingDistribution": {
-        "5": 6,
-        "4": 4,
-        "3": 2,
-        "2": 0,
-        "1": 0
-      },
+      "ratingDistribution": { "5": 6, "4": 4, "3": 2, "2": 0, "1": 0 },
       "trustScore": 95,
       "badge": "Top Rated"
     }
@@ -672,13 +818,6 @@ Get comprehensive rating statistics for a user.
 - **Trusted**: 4.0+ rating with 5+ reviews
 - **Rising Star**: 4.0+ rating with 2-4 reviews
 
-**Trust Score Algorithm:**
-
-```
-trustScore = (averageRating * 20) + min(totalReviews * 0.5, 10)
-Maximum: 110 (5 stars * 20 + 10 bonus points)
-```
-
 ### Report Review
 
 ```
@@ -686,17 +825,7 @@ POST /api/reviews/:id/report
 Authorization: Bearer <token>
 ```
 
-Report inappropriate review.
-
-**Request Body:**
-
-```json
-{
-  "reason": "This review contains false information and inappropriate language"
-}
-```
-
-**Note:** Reviews with 3+ reports are automatically flagged for moderation.
+Report inappropriate review. Reviews with 3+ reports are automatically flagged.
 
 ### Get Employer Reviews
 
@@ -704,120 +833,79 @@ Report inappropriate review.
 GET /api/reviews/employer/:employerId
 ```
 
-Get all reviews for an employer (alias endpoint).
-
 ### Get Job Seeker Reviews
 
 ```
 GET /api/reviews/jobseeker/:jobSeekerId
 ```
 
-Get all reviews for a job seeker (alias endpoint).
+### Get Sent Reviews
+
+```
+GET /api/reviews/sent/:userId
+```
 
 ---
 
-## Jobs & Applications (Basic Endpoints)
+## Admin Management
 
-### Get Job by ID
-
-```
-GET /api/jobs/:id
-```
-
-### Get All Jobs
+### Get Platform Statistics
 
 ```
-GET /api/jobs
+GET /api/admin/stats
+Authorization: Bearer <token>  (Admin only)
 ```
 
-### Check Application Eligibility
+### List All Users
 
 ```
-GET /api/applications/check/:jobId/:userId
+GET /api/admin/users
+Authorization: Bearer <token>  (Admin only)
 ```
 
-Check if user has accepted application for job (used for review eligibility).
+### Update User
+
+```
+PUT /api/admin/users/:userId
+Authorization: Bearer <token>  (Admin only)
+```
+
+### List All Jobs
+
+```
+GET /api/admin/jobs
+Authorization: Bearer <token>  (Admin only)
+```
+
+### Update Job
+
+```
+PUT /api/admin/jobs/:jobId
+Authorization: Bearer <token>  (Admin only)
+```
 
 ---
 
-### Health Check (Original)
+## File Upload
+
+### Upload File
 
 ```
-GET /
+POST /api/upload
+Authorization: Bearer <token>
+Content-Type: multipart/form-data
 ```
 
-Returns API health status and system information.
+Upload file to Cloudinary (CVs, profile images, review images).
 
-**Response:**
-
-```json
-{
-  "success": true,
-  "message": "JobLoom API is running",
-  "data": {
-    "status": "OK",
-    "uptime": 123.45,
-    "timestamp": "2026-02-11T...",
-    "environment": "development",
-    "nodeVersion": "v18.0.0",
-    "memory": {
-      "used": 45,
-      "total": 100,
-      "unit": "MB"
-    },
-    "apiDocs": "/api"
-  }
-}
-```
-
-### Hello World
+### Get Signed Download URL
 
 ```
-GET /api/hello
+GET /api/upload/signed-url?publicId=...
+Authorization: Bearer <token>
 ```
 
-Returns a Hello World message with metadata.
-
-**Response:**
-
-```json
-{
-  "success": true,
-  "message": "Hello World!",
-  "data": {
-    "message": "Hello World!",
-    "timestamp": "2026-02-11T...",
-    "environment": "development",
-    "version": "1.0.0"
-  }
-}
-```
-
-### Personalized Greeting
-
-```
-GET /api/hello/:name
-```
-
-Returns a personalized greeting message.
-
-**Parameters:**
-
-- `name` (string, required): Name to greet (max 50 characters)
-
-**Response:**
-
-```json
-{
-  "success": true,
-  "message": "Greeting generated successfully",
-  "data": {
-    "message": "Hello, John!",
-    "greeting": "Welcome to JobLoom API, John!",
-    "timestamp": "2026-02-11T..."
-  }
-}
-```
+---
 
 ## Error Handling
 
@@ -840,6 +928,7 @@ The API uses standardized error responses:
 
 - `200` - Success
 - `201` - Created
+- `204` - No Content
 - `400` - Bad Request (validation errors)
 - `401` - Unauthorized
 - `403` - Forbidden
@@ -847,168 +936,149 @@ The API uses standardized error responses:
 - `409` - Conflict (duplicate entries)
 - `500` - Internal Server Error
 
-## Logging
+## API Documentation (Swagger)
 
-The application uses Winston for logging with the following features:
+Interactive API documentation is available at:
 
-- **Console logging**: Colorized output for development
-- **File logging**: Separate files for all logs and errors
-- **Log levels**: error, warn, info, debug
-- **Request logging**: All HTTP requests and responses are logged
-
-Log files are stored in the `logs/` directory:
-
-- `combined.log` - All log levels
-- `error.log` - Error logs only
-
-## Architecture Patterns
-
-### Controllers
-
-Handle HTTP requests/responses and input validation. Controllers should be thin and delegate business logic to services.
-
-### Services
-
-Contain business logic and data operations. Services are reusable and testable independently.
-
-### Models
-
-Define data schemas, custom error classes, and database models.
-
-### Middleware
-
-Cross-cutting concerns like logging, authentication, error handling, and request processing.
-
-### Utilities
-
-Helper functions and shared utilities used across the application.
-
-## Custom Exception Classes
-
-The application provides several pre-built exception classes:
-
-```javascript
-import {
-  BadRequestException, // 400
-  UnauthorizedException, // 401
-  ForbiddenException, // 403
-  NotFoundException, // 404
-  ConflictException, // 409
-  InternalServerException, // 500
-} from './models/http-exception.js';
-
-// Usage
-throw new BadRequestException('Invalid input data');
-throw new NotFoundException('User not found');
 ```
+GET /api-docs          # Swagger UI
+GET /api-docs/swagger.json  # Raw OpenAPI 3.0 spec
+```
+
+Postman collections are also available in the `postman/` directory.
 
 ## Environment Variables
 
-| Variable          | Description                               | Default                                        |
-| ----------------- | ----------------------------------------- | ---------------------------------------------- |
-| `NODE_ENV`        | Environment (development/production/test) | development                                    |
-| `PORT`            | Server port                               | 3000                                           |
-| `MONGODB_URI`     | MongoDB connection string                 | mongodb://localhost:27017/jobloom              |
-| `MONGO_TEST_URI`  | MongoDB test database connection string   | mongodb://localhost:27017/jobloom-test         |
-| `JWT_SECRET`      | Secret key for JWT token generation       | your-super-secret-jwt-key-change-in-production |
-| `JWT_EXPIRES_IN`  | JWT token expiration time                 | 7d                                             |
-| `BCRYPT_ROUNDS`   | Number of bcrypt hashing rounds           | 10                                             |
-| `LOG_LEVEL`       | Winston log level (error/warn/info/debug) | info                                           |
-| `ALLOWED_ORIGINS` | CORS allowed origins (comma-separated)    | \* (development), must set in production       |
+| Variable                | Description                               | Default                                |
+| ----------------------- | ----------------------------------------- | -------------------------------------- |
+| `NODE_ENV`              | Environment (development/production/test) | development                            |
+| `PORT`                  | Server port                               | 3000                                   |
+| `MONGODB_URI`           | MongoDB connection string                 | mongodb://localhost:27017/jobloom      |
+| `MONGO_TEST_URI`        | MongoDB test database connection string   | mongodb://localhost:27017/jobloom-test |
+| `JWT_SECRET`            | Secret key for JWT token generation       | _(must set in production)_             |
+| `JWT_EXPIRES_IN`        | JWT token expiration time                 | 7d                                     |
+| `BCRYPT_ROUNDS`         | Number of bcrypt hashing rounds           | 10                                     |
+| `LOG_LEVEL`             | Winston log level (error/warn/info/debug) | info                                   |
+| `ALLOWED_ORIGINS`       | CORS allowed origins (comma-separated)    | \* (development)                       |
+| `FRONTEND_URL`          | Frontend application URL                  | http://localhost:5173                  |
+| `JITSI_DOMAIN`          | Jitsi video conference domain             | meet.jit.si                            |
+| `TEXT_LK_API_BASE_URL`  | Text.lk SMS API base URL                  | _(required for SMS)_                   |
+| `TEXT_LK_API_TOKEN`     | Text.lk API token                         | _(required for SMS)_                   |
+| `TEXT_LK_SENDER_ID`     | SMS sender ID                             | JobLoom                                |
+| `COHERE_API_KEY`        | Cohere AI API key                         | _(required for AI features)_           |
+| `COHERE_API_BASE_URL`   | Cohere API base URL                       | https://api.cohere.com/v2              |
+| `COHERE_MODEL`          | Cohere model name                         | command-a-vision-07-2025               |
+| `SMTP_HOST`             | Email SMTP host                           | smtp.gmail.com                         |
+| `SMTP_PORT`             | Email SMTP port                           | 587                                    |
+| `SMTP_USER`             | Email SMTP username                       | _(required for email)_                 |
+| `SMTP_PASS`             | Email SMTP password                       | _(required for email)_                 |
+| `SMTP_FROM_NAME`        | Email sender name                         | JobLoom                                |
+| `CLOUDINARY_CLOUD_NAME` | Cloudinary cloud name                     | _(required for uploads)_               |
+| `CLOUDINARY_API_KEY`    | Cloudinary API key                        | _(required for uploads)_               |
+| `CLOUDINARY_API_SECRET` | Cloudinary API secret                     | _(required for uploads)_               |
+
+## Deployment
+
+### Backend Deployment (Railway)
+
+The backend API is deployed on **Render** using Docker containers.
+
+**Platform:** [Render](https://render.com/)
+
+**Setup Steps:**
+
+1. Connect your GitHub repository to Render
+2. Render auto-detects the `Dockerfile` and builds the production image
+3. Configure environment variables in Render dashboard (all variables from `.env.example`)
+4. Render provides a public URL for the deployed API
+
+**Docker Configuration:**
+
+- Multi-stage `Dockerfile` with optimized production build
+- Non-root user for security
+- Health check endpoints (`/health`, `/healthz`, `/ready`)
+
+**Environment Variables (Railway Dashboard):**
+
+Set all variables listed in the Environment Variables table above. Secrets like `JWT_SECRET`, `MONGODB_URI`, API keys, and SMTP credentials must be configured in the Railway dashboard — never committed to source.
+
+**Live URLs:**
+
+- Deployed Backend API: `https://jobloom.be.dilzhan.com`
+- Swagger Documentation: `https://jobloom.be.dilzhan.com/api-docs`
+
+### Frontend Deployment (AWS EC2)
+
+See the [Frontend README](https://github.com/Y3-S2-SE-SLIIT-Group-Projects/JobLoom-App) for frontend deployment details.
+
+**Live URLs:**
+
+- Deployed Frontend: `https://jobloom.dilzhan.com`
 
 ## Scripts
 
-| Command                    | Description                                           |
-| -------------------------- | ----------------------------------------------------- |
-| `npm start`                | Start the server in production mode                   |
-| `npm run dev`              | Start the server in development mode with auto-reload |
-| `npm test`                 | Run all tests with coverage                           |
-| `npm run test:watch`       | Run tests in watch mode                               |
-| `npm run test:unit`        | Run unit tests only                                   |
-| `npm run test:integration` | Run integration tests only                            |
-| `npm run lint`             | Run ESLint                                            |
-| `npm run lint:fix`         | Fix ESLint errors automatically                       |
-| `npm run format`           | Format code with Prettier                             |
-| `npm run format:check`     | Check code formatting                                 |
+| Command                          | Description                                           |
+| -------------------------------- | ----------------------------------------------------- |
+| `npm start`                      | Start the server in production mode                   |
+| `npm run dev`                    | Start the server in development mode with auto-reload |
+| `npm test`                       | Run all tests with coverage                           |
+| `npm run test:unit`              | Run unit tests only                                   |
+| `npm run test:integration`       | Run integration tests only                            |
+| `npm run test:e2e`               | Run Playwright E2E tests                              |
+| `npm run test:performance`       | Run k6 performance/load tests                         |
+| `npm run test:performance:jobs`  | Run k6 job API load test                              |
+| `npm run test:performance:users` | Run k6 user API load test                             |
+| `npm run test:watch`             | Run tests in watch mode                               |
+| `npm run test:docker`            | Run integration tests with Docker MongoDB             |
+| `npm run test:setup`             | Start test MongoDB in Docker                          |
+| `npm run test:teardown`          | Stop test MongoDB container                           |
+| `npm run lint`                   | Run ESLint                                            |
+| `npm run lint:fix`               | Fix ESLint errors automatically                       |
+| `npm run format`                 | Format code with Prettier                             |
+| `npm run format:check`           | Check code formatting                                 |
+| `npm run seed:basic`             | Seed basic users and jobs                             |
+| `npm run seed:admin`             | Seed admin user                                       |
 
 ## Testing
 
 ### Quick Start
 
 ```bash
-# Unit tests only (no setup required - recommended for development)
+# Unit tests only (no setup required)
 npm run test:unit
 
 # All tests (requires MongoDB)
 npm test
 ```
 
-### Running Tests
+### Test Pyramid
+
+| Type        | Count          | Command                    | Dependencies                  |
+| ----------- | -------------- | -------------------------- | ----------------------------- |
+| Unit        | 6 test files   | `npm run test:unit`        | None (uses in-memory MongoDB) |
+| Integration | 4 test files   | `npm run test:integration` | MongoDB                       |
+| E2E         | 1 spec file    | `npm run test:e2e`         | Running server                |
+| Performance | 2 load scripts | `npm run test:performance` | k6 + running server           |
+
+### Running All Test Types
 
 ```bash
-# Run unit tests only (✅ Fast, no dependencies)
+# 1. Unit tests (fast, no dependencies)
 npm run test:unit
 
-# Run integration tests only (⚠️ Requires MongoDB)
+# 2. Integration tests (requires MongoDB)
 npm run test:integration
 
-# Run all tests with coverage (⚠️ Requires MongoDB)
-npm test
-
-# Run tests in watch mode
-npm run test:watch
-```
-
-### MongoDB Setup for Integration Tests
-
-Integration tests require MongoDB. Choose one option:
-
-#### Option 1: Local MongoDB (Recommended)
-
-```bash
-# Linux
-sudo apt install mongodb && sudo systemctl start mongodb
-
-# macOS
-brew install mongodb-community && brew services start mongodb-community
-
-# Then run tests
-npm run test:integration
-```
-
-#### Option 2: Docker
-
-```bash
-# Start test database
-npm run test:setup
-
-# Run integration tests
-npm run test:integration
-
-# Stop test database
-npm run test:teardown
-
-# Or all-in-one
-npm run test:docker
-```
-
-#### Option 3: Skip Integration Tests
-
-```bash
-# Just run unit tests during development
-npm run test:unit
+# 3. Performance tests (requires k6 + running server)
+npm run dev  # in one terminal
+npm run test:performance  # in another terminal
 ```
 
 ### Test Coverage
 
-The project includes comprehensive testing:
+Coverage is collected automatically with `npm test` and reports are generated in the `coverage/` directory.
 
-- ✅ **24 unit tests** - Rating calculations, trust score, badge logic
-- ⚠️ **15 integration tests** - Complete API workflows (requires MongoDB)
-
-**Coverage Target**: 70%+ for branches, functions, lines, and statements
-
-📖 **Detailed testing guide**: See [docs/TESTING.md](docs/TESTING.md)
+For detailed testing documentation, see [docs/TESTING.md](docs/TESTING.md).
 
 ## Testing the API
 
@@ -1058,40 +1128,54 @@ http localhost:3000/api/hello
 http localhost:3000/api/hello/John
 ```
 
+## Architecture Patterns
+
+### Controllers
+
+Handle HTTP requests/responses and input validation. Controllers should be thin and delegate business logic to services.
+
+### Services
+
+Contain business logic and data operations. Services are reusable and testable independently.
+
+### Models
+
+Define data schemas, custom error classes, and database models.
+
+### Middleware
+
+Cross-cutting concerns like logging, authentication, error handling, and request processing.
+
+### Utilities
+
+Helper functions and shared utilities used across the application.
+
+## Custom Exception Classes
+
+The application provides several pre-built exception classes:
+
+```javascript
+import {
+  BadRequestException, // 400
+  UnauthorizedException, // 401
+  ForbiddenException, // 403
+  NotFoundException, // 404
+  ConflictException, // 409
+  InternalServerException, // 500
+} from './models/http-exception.js';
+
+// Usage
+throw new BadRequestException('Invalid input data');
+throw new NotFoundException('User not found');
+```
+
 ## Development Guidelines
 
 ### Adding New Routes
 
-1. Create a new folder in `src/routes/` for your feature
-2. Create a controller file (e.g., `feature.controller.js`)
-3. Create a service file (e.g., `feature.service.js`)
-4. Register the route in `src/routes/index.js`
-
-Example:
-
-```javascript
-// src/routes/users/users.controller.js
-import { Router } from 'express';
-import usersService from './users.service.js';
-import { sendSuccess } from '../../utils/response.utils.js';
-
-const router = Router();
-
-router.get('/', async (req, res, next) => {
-  try {
-    const users = await usersService.getAllUsers();
-    sendSuccess(res, 'Users retrieved successfully', users);
-  } catch (error) {
-    next(error);
-  }
-});
-
-export default router;
-
-// src/routes/index.js
-import usersController from './users/users.controller.js';
-router.use('/users', usersController);
-```
+1. Create a new folder in `src/modules/` for your feature
+2. Create model, controller, service, routes, and validation files
+3. Register the route in `src/routes/index.js`
 
 ## License
 

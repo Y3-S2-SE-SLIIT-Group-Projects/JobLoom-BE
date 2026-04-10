@@ -10,10 +10,16 @@
     "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --coverage",
     "test:watch": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --watch",
     "test:unit": "cross-env NODE_OPTIONS=--experimental-vm-modules jest tests/unit",
-    "test:integration": "cross-env NODE_OPTIONS=--experimental-vm-modules jest tests/integration --runInBand --passWithNoTests",
+    "test:integration": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --runInBand --passWithNoTests --testMatch=\"**/tests/integration/**/*.test.js\"",
+    "test:e2e": "playwright test",
+    "test:performance": "echo 'Requires k6 — install: https://grafana.com/docs/k6/latest/set-up/install-k6/' && k6 run tests/performance/user.load.js && k6 run tests/performance/job.load.js",
+    "test:performance:jobs": "k6 run tests/performance/job.load.js",
+    "test:performance:users": "k6 run tests/performance/user.load.js",
     "test:docker": "docker compose -f docker-compose.test.yml up -d && npm run test:integration; docker-compose -f docker-compose.test.yml down",
     "test:setup": "docker compose -f docker-compose.test.yml up -d",
     "test:teardown": "docker compose -f docker-compose.test.yml down",
+    "seed:basic": "node scripts/seed-basic-users-job.js",
+    "seed:admin": "node scripts/seed-admin.js",
     "lint": "eslint src/**/*.js",
     "lint:fix": "eslint src/**/*.js --fix",
     "format": "prettier --write \"src/**/*.js\"",
@@ -34,6 +40,7 @@
   "dependencies": {
     "axios": "^1.13.5",
     "bcrypt": "^6.0.0",
+    "cloudinary": "^2.9.0",
     "cors": "^2.8.6",
     "dotenv": "^17.2.4",
     "express": "^4.22.1",
@@ -44,7 +51,8 @@
     "mongodb": "^7.1.0",
     "mongoose": "^9.2.0",
     "morgan": "^1.10.1",
-    "multer": "^2.0.2",
+    "multer": "^2.1.1",
+    "nodemailer": "^8.0.4",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
     "uuid": "^13.0.0",
@@ -52,6 +60,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.58.2",
     "bcryptjs": "^3.0.3",
     "cross-env": "^10.1.0",
     "eslint": "^10.0.0",
@@ -65,6 +74,7 @@
     "mongodb-memory-server": "^11.0.1",
     "nodemon": "^3.1.11",
     "prettier": "^3.8.1",
-    "supertest": "^7.2.2"
+    "supertest": "^7.2.2",
+    "wait-on": "^9.0.4"
   }
 }

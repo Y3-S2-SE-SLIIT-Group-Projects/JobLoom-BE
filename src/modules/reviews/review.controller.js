@@ -1,6 +1,20 @@
 import * as reviewService from './review.service.js';
 import { sendSuccess } from '../../utils/response.utils.js';
 import asyncHandler from '../../middleware/async-handler.js';
+import fs from 'fs';
+import { uploadToCloudinary } from '../../services/upload.service.js';
+import cloudinary from '../../config/cloudinary.js';
+
+const cleanupCloudinaryAssets = async (assets) => {
+  await Promise.allSettled(
+    assets.map((asset) =>
+      cloudinary.uploader.destroy(asset.public_id, {
+        resource_type: asset.resource_type || 'image',
+        type: 'upload',
+      })
+    )
+  );
+};
 
 /**
  * Review Controller
@@ -14,14 +28,45 @@ import asyncHandler from '../../middleware/async-handler.js';
  * @access  Private (Job Seeker or Employer)
  */
 export const createReview = asyncHandler(async (req, res) => {
-  const reviewData = {
-    ...req.body,
-    reviewerId: req.user._id,
-  };
+  // Derive reviewerType from the authenticated user's role so it cannot be forged
+  const reviewerType = req.user.role === 'employer' ? 'employer' : 'job_seeker';
 
-  const review = await reviewService.createReview(reviewData);
+  const uploadedFiles = req.files || [];
+  const uploadedAssets = [];
+  try {
+    const images = [];
 
-  sendSuccess(res, 'Review submitted successfully', { review }, 201);
+    for (const file of uploadedFiles) {
+      const result = await uploadToCloudinary(file.path, 'jobloom/reviews', file.mimetype);
+      uploadedAssets.push({ public_id: result.public_id, resource_type: result.resource_type });
+      images.push(result.url);
+    }
+
+    const reviewData = {
+      ...req.body,
+      reviewerId: req.user._id,
+      reviewerType,
+      images,
+    };
+
+    const review = await reviewService.createReview(reviewData);
+
+    sendSuccess(res, 'Review submitted successfully', { review }, 201);
+  } catch (error) {
+    if (uploadedAssets.length) {
+      await cleanupCloudinaryAssets(uploadedAssets);
+    }
+    throw error;
+  } finally {
+    // Best-effort cleanup for local temporary files saved by multer.
+    uploadedFiles.forEach((file) => {
+      try {
+        fs.unlinkSync(file.path);
+      } catch {
+        // ignore cleanup errors
+      }
+    });
+  }
 });
 
 /**
@@ -48,7 +93,7 @@ export const updateReview = asyncHandler(async (req, res) => {
 
 /**
  * @route   DELETE /api/reviews/:id
- * @desc    Delete own review (soft delete)
+ * @desc    Delete own review
  * @access  Private
  */
 export const deleteReview = asyncHandler(async (req, res) => {
@@ -148,12 +193,30 @@ export const getJobSeekerReviews = asyncHandler(async (req, res) => {
   sendSuccess(res, 'Job seeker reviews retrieved successfully', result);
 });
 
+/**
+ * @route   GET /api/reviews/sent/:userId
+ * @desc    Get reviews SENT BY a user (reviews they wrote)
+ * @access  Public
+ */
+export const getSentReviews = asyncHandler(async (req, res) => {
+  const filters = {
+    page: req.query.page,
+    limit: req.query.limit,
+    sort: req.query.sort,
+  };
+
+  const result = await reviewService.getSentReviewsForUser(req.params.userId, filters);
+
+  sendSuccess(res, 'Sent reviews retrieved successfully', result);
+});
+
 export default {
   createReview,
   getReviewById,
   updateReview,
   deleteReview,
   getReviewsForUser,
+  getSentReviews,
   getReviewsForJob,
   getUserRatingStats,
   reportReview,

@@ -1,6 +1,6 @@
 import { jest } from '@jest/globals';
 
-// ── Mock factories ───────────────────────────────────────────────────
+// Mock factories
 const mockUserModel = {
   findOne: jest.fn(),
   create: jest.fn(),
@@ -23,7 +23,7 @@ const mockEnvConfig = {
   jwtExpiresIn: '1h',
 };
 
-// ── Module-level mocks ───────────────────────────────────────────────
+// Module-level mocks
 jest.unstable_mockModule('../../src/modules/users/user.model.js', () => ({
   default: mockUserModel,
 }));

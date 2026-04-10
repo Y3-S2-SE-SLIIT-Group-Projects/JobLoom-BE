@@ -34,7 +34,30 @@ describe('Job Routes — Integration Tests', () => {
   let otherEmployerId;
   let jobSeekerToken;
 
-  // ── Setup & teardown ──────────────────────────────────────────────
+  const createUserAndLogin = async ({ firstName, lastName, email, role, phone }) => {
+    const password = 'password123';
+
+    const user = await User.create({
+      firstName,
+      lastName,
+      email,
+      password,
+      role,
+      phone,
+      location: {
+        village: 'Test Village',
+        district: 'Colombo',
+        province: 'Western',
+      },
+      isVerified: true,
+    });
+
+    const loginRes = await request(app).post('/api/users/login').send({ email, password });
+
+    return { token: loginRes.body.token, userId: user._id.toString() };
+  };
+
+  // Setup & teardown
 
   beforeAll(async () => {
     const testDbUri = process.env.MONGO_TEST_URI || 'mongodb://localhost:27017/jobloom-test';
@@ -55,40 +78,38 @@ describe('Job Routes — Integration Tests', () => {
     await Job.deleteMany({});
     await Application.deleteMany({});
 
-    // Register primary employer
-    const employerRes = await request(app).post('/api/users/register').send({
+    // Create verified users and login
+    const employer = await createUserAndLogin({
       firstName: 'Kamal',
       lastName: 'Employer',
       email: 'employer@test.com',
-      password: 'password123',
       role: 'employer',
+      phone: '94770000021',
     });
-    employerToken = employerRes.body.data.token;
-    employerId = employerRes.body.data.user._id;
+    employerToken = employer.token;
+    employerId = employer.userId;
 
-    // Register second employer (to test authorization)
-    const otherEmployerRes = await request(app).post('/api/users/register').send({
+    const otherEmployer = await createUserAndLogin({
       firstName: 'Nimal',
       lastName: 'Boss',
       email: 'other-employer@test.com',
-      password: 'password123',
       role: 'employer',
+      phone: '94770000022',
     });
-    otherEmployerToken = otherEmployerRes.body.data.token;
-    otherEmployerId = otherEmployerRes.body.data.user._id;
+    otherEmployerToken = otherEmployer.token;
+    otherEmployerId = otherEmployer.userId;
 
-    // Register job seeker (to test role guards)
-    const seekerRes = await request(app).post('/api/users/register').send({
+    const seeker = await createUserAndLogin({
       firstName: 'Saman',
       lastName: 'Worker',
       email: 'worker@test.com',
-      password: 'password123',
       role: 'job_seeker',
+      phone: '94770000023',
     });
-    jobSeekerToken = seekerRes.body.data.token;
+    jobSeekerToken = seeker.token;
   });
 
-  // ── POST /api/jobs ────────────────────────────────────────────────
+  // POST /api/jobs
 
   describe('POST /api/jobs', () => {
     const validJobData = {
@@ -171,12 +192,12 @@ describe('Job Routes — Integration Tests', () => {
         .set('Authorization', `Bearer ${employerToken}`)
         .send(jobWithBadCoords);
 
-      // Should succeed because service strips invalid coordinates
-      expect(res.status).toBe(201);
+      // Validation rejects empty coordinates arrays before service-level sanitization.
+      expect(res.status).toBe(400);
     });
   });
 
-  // ── GET /api/jobs ─────────────────────────────────────────────────
+  // GET /api/jobs
 
   describe('GET /api/jobs', () => {
     beforeEach(async () => {
@@ -273,7 +294,7 @@ describe('Job Routes — Integration Tests', () => {
     });
   });
 
-  // ── GET /api/jobs/:id ─────────────────────────────────────────────
+  // GET /api/jobs/:id
 
   describe('GET /api/jobs/:id', () => {
     let jobId;
@@ -320,7 +341,7 @@ describe('Job Routes — Integration Tests', () => {
     });
   });
 
-  // ── GET /api/jobs/employer/my-jobs ────────────────────────────────
+  // GET /api/jobs/employer/my-jobs
 
   describe('GET /api/jobs/employer/my-jobs', () => {
     beforeEach(async () => {
@@ -358,7 +379,10 @@ describe('Job Routes — Integration Tests', () => {
       expect(res.body.success).toBe(true);
       const jobs = res.body.data.jobs;
       // Should include only the 2 jobs owned by employerId
-      jobs.forEach((job) => expect(job.employerId).toBe(employerId));
+      jobs.forEach((job) => {
+        const ownerId = job.employerId?._id || job.employerId;
+        expect(ownerId.toString()).toBe(employerId.toString());
+      });
       expect(jobs.length).toBe(2);
     });
 
@@ -377,7 +401,7 @@ describe('Job Routes — Integration Tests', () => {
     });
   });
 
-  // ── GET /api/jobs/employer/stats ──────────────────────────────────
+  // GET /api/jobs/employer/stats
 
   describe('GET /api/jobs/employer/stats', () => {
     beforeEach(async () => {
@@ -437,7 +461,7 @@ describe('Job Routes — Integration Tests', () => {
     });
   });
 
-  // ── PUT /api/jobs/:id ─────────────────────────────────────────────
+  // PUT /api/jobs/:id
 
   describe('PUT /api/jobs/:id', () => {
     let jobId;
@@ -501,7 +525,7 @@ describe('Job Routes — Integration Tests', () => {
     });
   });
 
-  // ── PATCH /api/jobs/:id/close ─────────────────────────────────────
+  // PATCH /api/jobs/:id/close
 
   describe('PATCH /api/jobs/:id/close', () => {
     let jobId;
@@ -548,7 +572,7 @@ describe('Job Routes — Integration Tests', () => {
     });
   });
 
-  // ── PATCH /api/jobs/:id/filled ────────────────────────────────────
+  // PATCH /api/jobs/:id/filled
 
   describe('PATCH /api/jobs/:id/filled', () => {
     let jobId;
@@ -593,7 +617,7 @@ describe('Job Routes — Integration Tests', () => {
     });
   });
 
-  // ── DELETE /api/jobs/:id ──────────────────────────────────────────
+  // DELETE /api/jobs/:id
 
   describe('DELETE /api/jobs/:id', () => {
     let jobId;
@@ -668,7 +692,7 @@ describe('Job Routes — Integration Tests', () => {
     });
   });
 
-  // ── Full job lifecycle workflow ────────────────────────────────────
+  // Full job lifecycle workflow
 
   describe('Full job lifecycle: create → update → close → delete', () => {
     test('employer creates, updates, closes, then soft-deletes a job', async () => {

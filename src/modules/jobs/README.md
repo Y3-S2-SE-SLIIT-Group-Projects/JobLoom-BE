@@ -31,15 +31,16 @@ The **Job Module** is the core component of the JobLoom platform. It manages the
 
 ### Key Capabilities
 
-| Feature                   | Description                                   |
-| ------------------------- | --------------------------------------------- |
-| **Job Posting**           | Employers create and manage job listings      |
-| **Job Discovery**         | Job seekers browse, search, and filter jobs   |
-| **Geospatial Search**     | Find nearby jobs using MongoDB `$near`        |
-| **Smart Recommendations** | Match jobs to user skills                     |
-| **Employer Dashboard**    | Stats and analytics for employers             |
-| **Soft Delete**           | Jobs are deactivated, not permanently removed |
-| **Status Lifecycle**      | `open` → `closed` / `filled`                  |
+| Feature                     | Description                                                |
+| --------------------------- | ---------------------------------------------------------- |
+| **Job Posting**             | Employers create and manage job listings                   |
+| **Job Discovery**           | Job seekers browse, search, and filter jobs                |
+| **Geospatial Search**       | Find nearby jobs using MongoDB `$near`                     |
+| **Smart Recommendations**   | Match jobs to user skills                                  |
+| **AI Description Drafting** | Generate structured job descriptions from job draft fields |
+| **Employer Dashboard**      | Stats and analytics for employers                          |
+| **Soft Delete**             | Jobs are deactivated, not permanently removed              |
+| **Status Lifecycle**        | `open` → `closed` / `filled`                               |
 
 ---
 
@@ -84,11 +85,11 @@ HTTP Request
 
 ```
 src/modules/jobs/
-├── job.routes.js       ← Express router (11 routes)
-├── job.controller.js   ← Request handlers (11 controllers)
-├── job.service.js      ← Business logic (13 service functions)
+├── job.routes.js       ← Express router (12 routes)
+├── job.controller.js   ← Request handlers (12 controllers)
+├── job.service.js      ← Business logic (14 service functions)
 ├── job.model.js        ← Mongoose schema + model (527 lines)
-├── job.validation.js   ← express-validator rules (7 validators)
+├── job.validation.js   ← express-validator rules (8 validators)
 └── README.md           ← This file
 ```
 
@@ -263,19 +264,20 @@ Created
 
 ### Summary Table
 
-| Method   | Route                        | Access   | Description                              |
-| -------- | ---------------------------- | -------- | ---------------------------------------- |
-| `GET`    | `/api/jobs`                  | Public   | Get all jobs with filtering & pagination |
-| `GET`    | `/api/jobs/nearby`           | Public   | Geospatial nearby job search             |
-| `GET`    | `/api/jobs/recommendations`  | Private  | Skill-based job recommendations          |
-| `GET`    | `/api/jobs/:id`              | Public   | Get single job by ID                     |
-| `POST`   | `/api/jobs`                  | Employer | Create a new job posting                 |
-| `GET`    | `/api/jobs/employer/my-jobs` | Employer | Get own job listings                     |
-| `GET`    | `/api/jobs/employer/stats`   | Employer | Dashboard statistics                     |
-| `PUT`    | `/api/jobs/:id`              | Employer | Update job details                       |
-| `PATCH`  | `/api/jobs/:id/close`        | Employer | Close job posting                        |
-| `PATCH`  | `/api/jobs/:id/filled`       | Employer | Mark job as filled                       |
-| `DELETE` | `/api/jobs/:id`              | Employer | Soft delete a job                        |
+| Method   | Route                            | Access   | Description                              |
+| -------- | -------------------------------- | -------- | ---------------------------------------- |
+| `GET`    | `/api/jobs`                      | Public   | Get all jobs with filtering & pagination |
+| `GET`    | `/api/jobs/nearby`               | Public   | Geospatial nearby job search             |
+| `GET`    | `/api/jobs/recommendations`      | Private  | Skill-based job recommendations          |
+| `GET`    | `/api/jobs/:id`                  | Public   | Get single job by ID                     |
+| `POST`   | `/api/jobs/generate-description` | Employer | Generate AI draft description (HTML)     |
+| `POST`   | `/api/jobs`                      | Employer | Create a new job posting                 |
+| `GET`    | `/api/jobs/employer/my-jobs`     | Employer | Get own job listings                     |
+| `GET`    | `/api/jobs/employer/stats`       | Employer | Dashboard statistics                     |
+| `PUT`    | `/api/jobs/:id`                  | Employer | Update job details                       |
+| `PATCH`  | `/api/jobs/:id/close`            | Employer | Close job posting                        |
+| `PATCH`  | `/api/jobs/:id/filled`           | Employer | Mark job as filled                       |
+| `DELETE` | `/api/jobs/:id`                  | Employer | Soft delete a job                        |
 
 ---
 
@@ -424,6 +426,33 @@ The service performs **multi-layer coordinate validation** before saving:
 3. Removes if values are not valid numbers or `NaN`
 4. Removes if out of range (lon: -180 to 180, lat: -90 to 90)
 5. Pre-save Mongoose hook performs a final cleanup pass
+
+---
+
+### `POST /api/jobs/generate-description` — Generate AI Job Description
+
+**Access:** Employer only | **Auth:** JWT token (employer role)
+
+**Purpose:** Generates a polished HTML job description draft from partial job input fields.
+
+**Validation Highlights:**
+
+- Accepts optional draft fields (`title`, `category`, `jobRole`, `employmentType`, salary fields, `location`, `skillsRequired`, `experienceRequired`, `positions`)
+- Requires at least one meaningful role identifier inside service logic (`title`, `jobRole`, or `category`)
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Description generated",
+  "data": {
+    "description": "<h3>Job Overview</h3><p>...</p><h3>Key Responsibilities</h3><ul>...</ul>"
+  }
+}
+```
+
+**Fallback Behavior:** If AI provider credentials are unavailable, the service returns a template-generated HTML description.
 
 ---
 
@@ -779,19 +808,19 @@ class MockJob {
 
 ### Planned Features
 
-| Feature                   | Priority | Description                                                      |
-| ------------------------- | -------- | ---------------------------------------------------------------- |
-| **Google Maps Geocoding** | High     | Convert address text → coordinates on job creation               |
-| **Enable 2dsphere Index** | High     | Uncomment geospatial index for optimal nearby search performance |
-| **Job Expiry**            | Medium   | Auto-close jobs after `endDate` passes (cron job)                |
-| **Job Boost / Featured**  | Medium   | Paid featured listings via PayHere integration                   |
-| **AI Job Descriptions**   | Medium   | OpenAI API auto-generates job descriptions                       |
-| **Push Notifications**    | Medium   | Firebase FCM alerts when matching jobs are posted                |
-| **WhatsApp Alerts**       | Low      | Twilio WhatsApp job notifications                                |
-| **Weather Integration**   | Low      | OpenWeatherMap for outdoor/farm job advisories                   |
-| **Hard Delete (Admin)**   | Low      | `hardDeleteJob()` is implemented, needs admin route              |
-| **Job Sharing**           | Low      | Share job links, QR codes for physical boards                    |
-| **Multi-language**        | Low      | Google Translate for Sinhala/Tamil job posts                     |
+| Feature                    | Priority | Description                                                      |
+| -------------------------- | -------- | ---------------------------------------------------------------- |
+| **Google Maps Geocoding**  | High     | Convert address text → coordinates on job creation               |
+| **Enable 2dsphere Index**  | High     | Uncomment geospatial index for optimal nearby search performance |
+| **Job Expiry**             | Medium   | Auto-close jobs after `endDate` passes (cron job)                |
+| **Job Boost / Featured**   | Medium   | Paid featured listings via PayHere integration                   |
+| **AI Job Descriptions v2** | Medium   | Improve output quality, multilingual prompts, and tone presets   |
+| **Push Notifications**     | Medium   | Firebase FCM alerts when matching jobs are posted                |
+| **WhatsApp Alerts**        | Low      | Twilio WhatsApp job notifications                                |
+| **Weather Integration**    | Low      | OpenWeatherMap for outdoor/farm job advisories                   |
+| **Hard Delete (Admin)**    | Low      | `hardDeleteJob()` is implemented, needs admin route              |
+| **Job Sharing**            | Low      | Share job links, QR codes for physical boards                    |
+| **Multi-language**         | Low      | Google Translate for Sinhala/Tamil job posts                     |
 
 ### Architectural TODOs
 
@@ -813,6 +842,7 @@ GET    /api/jobs/recommendations          # Skill-matched (auth)
 GET    /api/jobs/:id                      # Single job
 
 # ── EMPLOYER (requires Bearer token + employer role) ────
+POST   /api/jobs/generate-description     # AI description draft (HTML)
 POST   /api/jobs                          # Create job
 GET    /api/jobs/employer/my-jobs         # My job listings
 GET    /api/jobs/employer/stats           # Dashboard stats
@@ -835,5 +865,5 @@ DELETE /api/jobs/:id                      # Soft delete
 
 ---
 
-_Last Updated: February 27, 2026_
+_Last Updated: April 10, 2026_
 _Author: JobLoom Development Team_
