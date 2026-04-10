@@ -5,7 +5,7 @@
  *   description: Job application workflow and status management
  */
 
-// ─── Public endpoints ───
+// Public endpoints
 
 /**
  * @swagger
@@ -57,7 +57,7 @@
  *         description: Invalid job ID or user ID format
  */
 
-// ─── Protected endpoints ───
+// Protected endpoints
 
 /**
  * @swagger

@@ -57,7 +57,7 @@ describe('Job Routes — Integration Tests', () => {
     return { token: loginRes.body.token, userId: user._id.toString() };
   };
 
-  // ── Setup & teardown ──────────────────────────────────────────────
+  // Setup & teardown
 
   beforeAll(async () => {
     const testDbUri = process.env.MONGO_TEST_URI || 'mongodb://localhost:27017/jobloom-test';
@@ -109,7 +109,7 @@ describe('Job Routes — Integration Tests', () => {
     jobSeekerToken = seeker.token;
   });
 
-  // ── POST /api/jobs ────────────────────────────────────────────────
+  // POST /api/jobs
 
   describe('POST /api/jobs', () => {
     const validJobData = {
@@ -197,7 +197,7 @@ describe('Job Routes — Integration Tests', () => {
     });
   });
 
-  // ── GET /api/jobs ─────────────────────────────────────────────────
+  // GET /api/jobs
 
   describe('GET /api/jobs', () => {
     beforeEach(async () => {
@@ -294,7 +294,7 @@ describe('Job Routes — Integration Tests', () => {
     });
   });
 
-  // ── GET /api/jobs/:id ─────────────────────────────────────────────
+  // GET /api/jobs/:id
 
   describe('GET /api/jobs/:id', () => {
     let jobId;
@@ -341,7 +341,7 @@ describe('Job Routes — Integration Tests', () => {
     });
   });
 
-  // ── GET /api/jobs/employer/my-jobs ────────────────────────────────
+  // GET /api/jobs/employer/my-jobs
 
   describe('GET /api/jobs/employer/my-jobs', () => {
     beforeEach(async () => {
@@ -401,7 +401,7 @@ describe('Job Routes — Integration Tests', () => {
     });
   });
 
-  // ── GET /api/jobs/employer/stats ──────────────────────────────────
+  // GET /api/jobs/employer/stats
 
   describe('GET /api/jobs/employer/stats', () => {
     beforeEach(async () => {
@@ -461,7 +461,7 @@ describe('Job Routes — Integration Tests', () => {
     });
   });
 
-  // ── PUT /api/jobs/:id ─────────────────────────────────────────────
+  // PUT /api/jobs/:id
 
   describe('PUT /api/jobs/:id', () => {
     let jobId;
@@ -525,7 +525,7 @@ describe('Job Routes — Integration Tests', () => {
     });
   });
 
-  // ── PATCH /api/jobs/:id/close ─────────────────────────────────────
+  // PATCH /api/jobs/:id/close
 
   describe('PATCH /api/jobs/:id/close', () => {
     let jobId;
@@ -572,7 +572,7 @@ describe('Job Routes — Integration Tests', () => {
     });
   });
 
-  // ── PATCH /api/jobs/:id/filled ────────────────────────────────────
+  // PATCH /api/jobs/:id/filled
 
   describe('PATCH /api/jobs/:id/filled', () => {
     let jobId;
@@ -617,7 +617,7 @@ describe('Job Routes — Integration Tests', () => {
     });
   });
 
-  // ── DELETE /api/jobs/:id ──────────────────────────────────────────
+  // DELETE /api/jobs/:id
 
   describe('DELETE /api/jobs/:id', () => {
     let jobId;
@@ -692,7 +692,7 @@ describe('Job Routes — Integration Tests', () => {
     });
   });
 
-  // ── Full job lifecycle workflow ────────────────────────────────────
+  // Full job lifecycle workflow
 
   describe('Full job lifecycle: create → update → close → delete', () => {
     test('employer creates, updates, closes, then soft-deletes a job', async () => {

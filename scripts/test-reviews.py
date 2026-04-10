@@ -17,7 +17,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-# ── colours ───────────────────────────────────────────────────────────────────
+# colours
 G = "\033[0;32m"; R = "\033[0;31m"; Y = "\033[1;33m"
 C = "\033[0;36m"; B = "\033[1m";    N = "\033[0m"
 
@@ -47,7 +47,7 @@ def skip(label):
 def info(msg):
     print(f"{C}   ➜  {msg}{N}")
 
-# ── HTTP helper ───────────────────────────────────────────────────────────────
+# HTTP helper
 BASE = "http://127.0.0.1:3008/api"   # 127.0.0.1 avoids IPv6/DNS issues
 
 def req(method, path, body=None, token=None, params=None, _retry=3):
@@ -91,9 +91,9 @@ def expect(label, code, resp, expected):
         fail(label, f"expected {expected}, got {code}: {msg}")
     return ok_flag
 
-# ─────────────────────────────────────────────────────────────────────────────
+
 # SEED — run seed script first, then read the written IDs file
-# ─────────────────────────────────────────────────────────────────────────────
+
 sep("SEED — Creating fresh test data")
 
 script_dir = Path(__file__).parent
@@ -145,9 +145,9 @@ info(f"seekerId    = {SEEK}")
 info(f"job1Id      = {JOB1}")
 info(f"job2Id      = {JOB2}")
 
-# ─────────────────────────────────────────────────────────────────────────────
+
 # 0 — Login
-# ─────────────────────────────────────────────────────────────────────────────
+
 sep("0 — Login")
 
 _, res = req("POST", "/users/login", {"email": "seed.seeker@jobloom.test",  "password": "Test1234"})
@@ -162,9 +162,9 @@ if not SEEK_TOK or not EMP_TOK:
     print(f"{R}Cannot continue without tokens.{N}")
     sys.exit(1)
 
-# ─────────────────────────────────────────────────────────────────────────────
+
 # 1 — Public Read (no auth)
-# ─────────────────────────────────────────────────────────────────────────────
+
 sep("1 — Public Read (no auth required)")
 
 code, res = req("GET", f"/reviews/user/{EMP}")
@@ -199,9 +199,9 @@ code, res = req("GET", f"/reviews/jobseeker/{SEEK}")
 count = len((res.get("data") or {}).get("reviews", []))
 expect(f"[1.8] GET /reviews/jobseeker/:id     → {count} review(s)", code, res, "ok")
 
-# ─────────────────────────────────────────────────────────────────────────────
+
 # 2 — Create Reviews
-# ─────────────────────────────────────────────────────────────────────────────
+
 sep("2 — Create Reviews [Protected]")
 REVIEW1_ID = ""
 REVIEW2_ID = ""
@@ -240,9 +240,9 @@ code, res = req("POST", "/reviews", {
 }, EMP_TOK)
 expect("[2.4] Employer → Seeker (Job 2, partial criteria)", code, res, "ok")
 
-# ─────────────────────────────────────────────────────────────────────────────
+
 # 3 — Get single review by ID
-# ─────────────────────────────────────────────────────────────────────────────
+
 sep("3 — Get Review by ID")
 
 if REVIEW1_ID:
@@ -252,9 +252,9 @@ if REVIEW1_ID:
 else:
     skip("[3.1] GET single review — review1Id not captured (section 2 failed)")
 
-# ─────────────────────────────────────────────────────────────────────────────
+
 # 4 — Pagination & Filtering
-# ─────────────────────────────────────────────────────────────────────────────
+
 sep("4 — Pagination & Filtering")
 
 code, res = req("GET", f"/reviews/user/{EMP}", params={"reviewerType": "job_seeker", "sort": "-createdAt", "page": "1", "limit": "5"})
@@ -268,9 +268,9 @@ code, res = req("GET", f"/reviews/user/{EMP}", params={"page": "1", "limit": "2"
 count = len((res.get("data") or {}).get("reviews", []))
 expect(f"[4.3] Limit=2 → {count} result(s)", code, res, "ok")
 
-# ─────────────────────────────────────────────────────────────────────────────
+
 # 5 — Update Review (own only)
-# ─────────────────────────────────────────────────────────────────────────────
+
 sep("5 — Update Review [Protected — own review only]")
 
 if REVIEW1_ID:
@@ -289,9 +289,9 @@ if REVIEW1_ID:
 else:
     skip("[5.1-5.2] Skipped — review1Id not captured")
 
-# ─────────────────────────────────────────────────────────────────────────────
+
 # 6 — Report Review
-# ─────────────────────────────────────────────────────────────────────────────
+
 sep("6 — Report Review [Protected]")
 
 if REVIEW1_ID:
@@ -302,9 +302,9 @@ if REVIEW1_ID:
 else:
     skip("[6.1] Skipped — review1Id not captured")
 
-# ─────────────────────────────────────────────────────────────────────────────
+
 # 7 — Error Cases
-# ─────────────────────────────────────────────────────────────────────────────
+
 sep("7 — Error Cases (expect failures)")
 
 # 7.1 Duplicate review
@@ -353,9 +353,9 @@ if REVIEW1_ID:
 else:
     skip("[7.6] Skipped — review1Id not captured")
 
-# ─────────────────────────────────────────────────────────────────────────────
+
 # 8 — Stats after inserts
-# ─────────────────────────────────────────────────────────────────────────────
+
 sep("8 — Final Stats Check")
 
 code, res = req("GET", f"/reviews/stats/{EMP}")
@@ -372,9 +372,9 @@ print(f"  Seeker   → avgRating: {s.get('averageRating','?')} | "
       f"distribution: {s.get('ratingDistribution', {})}")
 expect("[8.2] Seeker stats retrieved", code, res, "ok")
 
-# ─────────────────────────────────────────────────────────────────────────────
+
 # 9 — Delete (soft) + verify gone
-# ─────────────────────────────────────────────────────────────────────────────
+
 sep("9 — Delete Review + Verify Gone")
 
 if REVIEW1_ID:
@@ -386,9 +386,9 @@ if REVIEW1_ID:
 else:
     skip("[9.1-9.2] Skipped — review1Id not captured")
 
-# ─────────────────────────────────────────────────────────────────────────────
+
 # Summary
-# ─────────────────────────────────────────────────────────────────────────────
+
 sep("RESULTS")
 print(f"  {G}Passed: {pass_count}{N}")
 print(f"  {R}Failed: {fail_count}{N}")

@@ -5,7 +5,7 @@
  *   description: Review & Rating system with trust scores, badges, and moderation
  */
 
-// ─── Public endpoints ───
+// Public endpoints
 
 /**
  * @swagger
@@ -243,7 +243,7 @@
  *         description: Review not found
  */
 
-// ─── Protected endpoints ───
+// Protected endpoints
 
 /**
  * @swagger

@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-// ─── Swagger UI (headless browser) ───────────────────────────────────────────
+// Swagger UI (headless browser)
 
 test.describe('API Documentation (headless Chromium)', () => {
   test('Swagger UI loads and shows JobLoom title', async ({ page }) => {
@@ -25,7 +25,7 @@ test.describe('API Documentation (headless Chromium)', () => {
   });
 });
 
-// ─── Health (headless browser) ────────────────────────────────────────────────
+// Health (headless browser)
 
 test.describe('Server Health (headless Chromium)', () => {
   test('health JSON page is reachable and returns status', async ({ page }) => {

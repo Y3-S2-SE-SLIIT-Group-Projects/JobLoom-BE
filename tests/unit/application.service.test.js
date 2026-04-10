@@ -6,7 +6,7 @@ import mongoose from 'mongoose';
  * Tests business logic with mocked Mongoose models
  */
 
-// ── Helpers ──────────────────────────────────────────────────────────
+// Helpers
 const oid = () => new mongoose.Types.ObjectId();
 
 // Fixed IDs reused across tests
@@ -15,7 +15,7 @@ const employerId = oid();
 const jobId = oid();
 const applicationId = oid();
 
-// ── Mock factories ───────────────────────────────────────────────────
+// Mock factories
 
 /** Build a fake Job document returned by Job.findById */
 const makeJob = (overrides = {}) => ({
@@ -51,7 +51,7 @@ const makeApplication = (overrides = {}) => {
   return app;
 };
 
-// ── Module-level mocks ───────────────────────────────────────────────
+// Module-level mocks
 // We must use unstable_mockModule because the project is ESM.
 
 /**
@@ -140,7 +140,7 @@ const {
   checkApplicationEligibility,
 } = await import('../../src/modules/applications/application.service.js');
 
-// ── Test suites ──────────────────────────────────────────────────────
+// Test suites
 
 describe('Application Service — Unit Tests', () => {
   beforeEach(() => {
@@ -153,9 +153,8 @@ describe('Application Service — Unit Tests', () => {
     sendEmployerApplicationDecisionEmail.mockResolvedValue({ sent: true });
   });
 
-  // ────────────────────────────────────────────────────────────────────
   // applyForJob
-  // ────────────────────────────────────────────────────────────────────
+
   describe('applyForJob', () => {
     test('should create an application successfully', async () => {
       const job = makeJob();
@@ -225,9 +224,8 @@ describe('Application Service — Unit Tests', () => {
     });
   });
 
-  // ────────────────────────────────────────────────────────────────────
   // withdrawApplication
-  // ────────────────────────────────────────────────────────────────────
+
   describe('withdrawApplication', () => {
     test('should withdraw a pending application successfully', async () => {
       const app = makeApplication({ status: 'pending' });
@@ -272,9 +270,8 @@ describe('Application Service — Unit Tests', () => {
     });
   });
 
-  // ────────────────────────────────────────────────────────────────────
   // updateApplicationStatus
-  // ────────────────────────────────────────────────────────────────────
+
   describe('updateApplicationStatus', () => {
     beforeEach(() => {
       sendApplicationDecisionEmail.mockClear();
@@ -447,9 +444,8 @@ describe('Application Service — Unit Tests', () => {
     });
   });
 
-  // ────────────────────────────────────────────────────────────────────
   // getMyApplications
-  // ────────────────────────────────────────────────────────────────────
+
   describe('getMyApplications', () => {
     test('should return paginated applications with defaults', async () => {
       const apps = [makeApplication(), makeApplication({ _id: oid() })];
@@ -521,9 +517,8 @@ describe('Application Service — Unit Tests', () => {
     });
   });
 
-  // ────────────────────────────────────────────────────────────────────
   // getJobApplications
-  // ────────────────────────────────────────────────────────────────────
+
   describe('getJobApplications', () => {
     test('should return applications when employer owns the job', async () => {
       mockJobModel.findById.mockResolvedValue(makeJob());
@@ -567,9 +562,8 @@ describe('Application Service — Unit Tests', () => {
     });
   });
 
-  // ────────────────────────────────────────────────────────────────────
   // getApplicationById
-  // ────────────────────────────────────────────────────────────────────
+
   describe('getApplicationById', () => {
     /**
      * Build a thenable Mongoose query chain so that
@@ -653,9 +647,8 @@ describe('Application Service — Unit Tests', () => {
     });
   });
 
-  // ────────────────────────────────────────────────────────────────────
   // getApplicationStats
-  // ────────────────────────────────────────────────────────────────────
+
   describe('getApplicationStats', () => {
     test('should return correct per-status counts and total', async () => {
       mockJobModel.findById.mockResolvedValue(makeJob());
@@ -706,9 +699,8 @@ describe('Application Service — Unit Tests', () => {
     });
   });
 
-  // ────────────────────────────────────────────────────────────────────
   // checkApplicationEligibility
-  // ────────────────────────────────────────────────────────────────────
+
   describe('checkApplicationEligibility', () => {
     test('should return hasAcceptedApplication true when an accepted application exists', async () => {
       const app = makeApplication({ status: 'accepted' });

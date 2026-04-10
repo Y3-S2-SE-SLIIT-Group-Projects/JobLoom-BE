@@ -5,7 +5,7 @@
  *   description: Job postings, search, filters, and geospatial queries
  */
 
-// ─── Public endpoints ───
+// Public endpoints
 
 /**
  * @swagger
@@ -290,7 +290,7 @@
  *         $ref: '#/components/responses/Forbidden'
  */
 
-// ─── Protected endpoints (Employer only) ───
+// Protected endpoints (Employer only)
 
 /**
  * @swagger
@@ -777,7 +777,7 @@
  *         description: Job not found
  */
 
-// ─── Component schemas ───
+// Component schemas
 
 /**
  * @swagger
