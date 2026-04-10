@@ -61,6 +61,18 @@ router.get(
 );
 
 /**
+ * Virtual interview Jitsi join context (employer or applicant on this application)
+ * Must be registered before GET /:id
+ */
+router.get(
+  '/:id/interview-join-context',
+  protect,
+  applicationValidation.getInterviewJoinContextValidation,
+  validate,
+  applicationController.getInterviewJoinContext
+);
+
+/**
  * Get application by ID
  */
 router.get(
@@ -108,15 +120,27 @@ router.patch(
 );
 
 /**
- * Schedule or update an interview date (employer)
+ * Schedule or update an interview (employer)
  */
 router.patch(
-  '/:id/interview-date',
+  '/:id/interview',
   protect,
   requireEmployer,
   applicationValidation.scheduleInterviewValidation,
   validate,
   applicationController.scheduleInterview
+);
+
+/**
+ * Cancel scheduled interview (employer)
+ */
+router.delete(
+  '/:id/interview',
+  protect,
+  requireEmployer,
+  applicationValidation.getApplicationValidation,
+  validate,
+  applicationController.cancelInterview
 );
 
 /**

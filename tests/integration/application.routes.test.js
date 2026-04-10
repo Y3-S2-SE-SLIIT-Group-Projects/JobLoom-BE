@@ -606,6 +606,228 @@ describe('Application Routes - Integration Tests', () => {
     });
   });
 
+  // ── PATCH /api/applications/:id/interview ─────────────────────────
+
+  describe('PATCH /api/applications/:id/interview', () => {
+    let applicationId;
+
+    beforeEach(async () => {
+      const application = await Application.create({
+        jobId,
+        jobSeekerId,
+        employerId,
+        status: 'shortlisted',
+      });
+      applicationId = application._id;
+    });
+
+    const futureIso = () => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+    test('virtual interview: response includes jitsiRoomName', async () => {
+      const res = await request(app)
+        .patch(`/api/applications/${applicationId}/interview`)
+        .set('Authorization', `Bearer ${employerToken}`)
+        .send({
+          interviewDate: futureIso(),
+          interviewType: 'virtual',
+          interviewDuration: 30,
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.application.interviewType).toBe('virtual');
+      expect(res.body.data.application.jitsiRoomName).toBeTruthy();
+      expect(typeof res.body.data.application.jitsiRoomName).toBe('string');
+    });
+
+    test('in-person interview: no jitsiRoomName', async () => {
+      const res = await request(app)
+        .patch(`/api/applications/${applicationId}/interview`)
+        .set('Authorization', `Bearer ${employerToken}`)
+        .send({
+          interviewDate: futureIso(),
+          interviewType: 'in_person',
+          interviewDuration: 30,
+          interviewLocation: '123 Galle Rd, Colombo',
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.application.interviewType).toBe('in_person');
+      expect(res.body.data.application.jitsiRoomName).toBeFalsy();
+      expect(res.body.data.application.interviewLocation).toContain('Galle');
+    });
+
+    test('rejects in_person without interviewLocation', async () => {
+      const res = await request(app)
+        .patch(`/api/applications/${applicationId}/interview`)
+        .set('Authorization', `Bearer ${employerToken}`)
+        .send({
+          interviewDate: futureIso(),
+          interviewType: 'in_person',
+          interviewDuration: 30,
+        });
+
+      expect([400, 422]).toContain(res.status);
+      expect(res.body.message).toBeTruthy();
+    });
+
+    test('rejects past interview date', async () => {
+      const res = await request(app)
+        .patch(`/api/applications/${applicationId}/interview`)
+        .set('Authorization', `Bearer ${employerToken}`)
+        .send({
+          interviewDate: new Date(Date.now() - 86_400_000).toISOString(),
+          interviewType: 'virtual',
+          interviewDuration: 30,
+        });
+
+      expect(res.status).toBe(400);
+      const raw = res.body.error;
+      const details = Array.isArray(raw) ? raw : raw?.details;
+      const fieldMsg = Array.isArray(details) ? details.map((d) => d.message).join(' ') : '';
+      expect(`${res.body.message} ${fieldMsg}`).toMatch(/future|past/i);
+    });
+
+    test('rejects scheduling when application is not shortlisted', async () => {
+      await Application.findByIdAndUpdate(applicationId, { status: 'pending' });
+
+      const res = await request(app)
+        .patch(`/api/applications/${applicationId}/interview`)
+        .set('Authorization', `Bearer ${employerToken}`)
+        .send({
+          interviewDate: futureIso(),
+          interviewType: 'virtual',
+          interviewDuration: 30,
+        });
+
+      expect(res.status).toBe(400);
+      expect(String(res.body.message)).toMatch(/shortlist/i);
+    });
+  });
+
+  // ── GET /api/applications/:id/interview-join-context ──────────────
+
+  describe('GET /api/applications/:id/interview-join-context', () => {
+    let applicationId;
+
+    beforeEach(async () => {
+      const application = await Application.create({
+        jobId,
+        jobSeekerId,
+        employerId,
+        status: 'shortlisted',
+      });
+      applicationId = application._id;
+      const when = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
+      await Application.findByIdAndUpdate(applicationId, {
+        interviewDate: when,
+        interviewType: 'virtual',
+        interviewDuration: 30,
+        jitsiRoomName: 'jobloom-integration-test-room',
+      });
+    });
+
+    test('returns 200 for employer with roomName and role', async () => {
+      const res = await request(app)
+        .get(`/api/applications/${applicationId}/interview-join-context`)
+        .set('Authorization', `Bearer ${employerToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.roomName).toBe('jobloom-integration-test-room');
+      expect(res.body.data.role).toBe('employer');
+      expect(res.body.data.displayName).toContain('John');
+    });
+
+    test('returns 200 for job seeker on the application', async () => {
+      const res = await request(app)
+        .get(`/api/applications/${applicationId}/interview-join-context`)
+        .set('Authorization', `Bearer ${jobSeekerToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.role).toBe('job_seeker');
+      expect(res.body.data.displayName).toContain('Jane');
+    });
+
+    test('returns 403 for unrelated authenticated user', async () => {
+      const other = await createUserAndLogin({
+        firstName: 'Stranger',
+        lastName: 'User',
+        email: 'stranger-join@test.com',
+        role: 'job_seeker',
+        phone: '94770000099',
+      });
+
+      const res = await request(app)
+        .get(`/api/applications/${applicationId}/interview-join-context`)
+        .set('Authorization', `Bearer ${other.token}`);
+
+      expect(res.status).toBe(403);
+    });
+
+    test('returns 400 for in-person interview (no video room)', async () => {
+      await Application.findByIdAndUpdate(applicationId, {
+        interviewType: 'in_person',
+        interviewLocation: 'Office',
+        jitsiRoomName: undefined,
+      });
+
+      const res = await request(app)
+        .get(`/api/applications/${applicationId}/interview-join-context`)
+        .set('Authorization', `Bearer ${employerToken}`);
+
+      expect(res.status).toBe(400);
+    });
+  });
+
+  // ── DELETE /api/applications/:id/interview ────────────────────────
+
+  describe('DELETE /api/applications/:id/interview', () => {
+    let applicationId;
+
+    beforeEach(async () => {
+      const application = await Application.create({
+        jobId,
+        jobSeekerId,
+        employerId,
+        status: 'shortlisted',
+        interviewDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+        interviewType: 'virtual',
+        interviewDuration: 30,
+        jitsiRoomName: 'room-to-clear',
+      });
+      applicationId = application._id;
+    });
+
+    test('employer can cancel interview and fields are cleared', async () => {
+      const res = await request(app)
+        .delete(`/api/applications/${applicationId}/interview`)
+        .set('Authorization', `Bearer ${employerToken}`);
+
+      expect(res.status).toBe(200);
+
+      const updated = await Application.findById(applicationId).lean();
+      expect(updated.interviewDate).toBeUndefined();
+      expect(updated.interviewType).toBeUndefined();
+      expect(updated.jitsiRoomName).toBeUndefined();
+    });
+
+    test('returns 400 when no interview scheduled', async () => {
+      await Application.findByIdAndUpdate(applicationId, {
+        $unset: {
+          interviewDate: 1,
+          interviewType: 1,
+          jitsiRoomName: 1,
+          interviewDuration: 1,
+        },
+      });
+
+      const res = await request(app)
+        .delete(`/api/applications/${applicationId}/interview`)
+        .set('Authorization', `Bearer ${employerToken}`);
+
+      expect(res.status).toBe(400);
+    });
+  });
+
   // ── Full workflow: apply → review → accept → withdraw fails ──────
 
   describe('Full application lifecycle', () => {

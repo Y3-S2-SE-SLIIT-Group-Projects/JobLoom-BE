@@ -56,6 +56,10 @@ export const getApplicationValidation = [
   param('id').isMongoId().withMessage('Invalid application ID'),
 ];
 
+export const getInterviewJoinContextValidation = [
+  param('id').isMongoId().withMessage('Invalid application ID'),
+];
+
 export const getJobApplicationsValidation = [
   param('jobId').isMongoId().withMessage('Invalid job ID'),
 
@@ -114,6 +118,31 @@ export const scheduleInterviewValidation = [
       }
       return true;
     }),
+
+  body('interviewType')
+    .notEmpty()
+    .withMessage('Interview type is required')
+    .isIn(['virtual', 'in_person'])
+    .withMessage('Interview type must be virtual or in_person'),
+
+  body('interviewDuration')
+    .optional()
+    .isInt({ min: 15, max: 480 })
+    .withMessage('Duration must be between 15 and 480 minutes'),
+
+  body('interviewLocation')
+    .if(body('interviewType').equals('in_person'))
+    .trim()
+    .notEmpty()
+    .withMessage('Location is required for in-person interviews')
+    .isLength({ max: 300 })
+    .withMessage('Location cannot exceed 300 characters'),
+
+  body('interviewLocationNotes')
+    .optional()
+    .trim()
+    .isLength({ max: 500 })
+    .withMessage('Location notes cannot exceed 500 characters'),
 ];
 
 export default {
@@ -121,6 +150,7 @@ export default {
   withdrawApplicationValidation,
   updateStatusValidation,
   getApplicationValidation,
+  getInterviewJoinContextValidation,
   getJobApplicationsValidation,
   getMyApplicationsValidation,
   getApplicationStatsValidation,

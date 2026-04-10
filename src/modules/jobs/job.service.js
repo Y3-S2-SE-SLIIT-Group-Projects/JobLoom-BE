@@ -622,6 +622,17 @@ export const updateJob = async (jobId, employerId, updateData) => {
     // Update fields
     Object.assign(job, updateData);
 
+    // Keep category/categoryLabel consistent when category is changed
+    if (Object.prototype.hasOwnProperty.call(updateData, 'category')) {
+      if (updateData.category !== 'other') {
+        job.categoryLabel = undefined;
+      } else {
+        const label =
+          typeof updateData.categoryLabel === 'string' ? updateData.categoryLabel.trim() : '';
+        job.categoryLabel = label || undefined;
+      }
+    }
+
     await job.save();
 
     logger.info(`Job updated successfully: ${jobId}`, {

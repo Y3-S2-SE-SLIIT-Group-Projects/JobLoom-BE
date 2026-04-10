@@ -16,11 +16,6 @@ export const configureBodyParser = (app) => {
     express.json({
       limit: SERVER_CONFIG.REQUEST_SIZE_LIMIT,
       strict: true,
-      verify: (req, _res, buf) => {
-        if (req.headers['calendly-webhook-signature']) {
-          req.rawBody = buf;
-        }
-      },
     })
   );
 

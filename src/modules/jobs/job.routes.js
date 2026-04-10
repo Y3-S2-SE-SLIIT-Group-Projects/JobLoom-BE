@@ -16,34 +16,28 @@ const router = express.Router();
 // PUBLIC ROUTES
 // ============================================
 
-/**
- * Get all jobs with filtering, searching, sorting, and pagination
- */
 router.get('/', jobValidation.getJobsValidation, validate, jobController.getAllJobs);
 
-/**
- * Get nearby jobs using geospatial query (Mapbox integration)
- */
 router.get('/nearby', jobValidation.getNearbyJobsValidation, validate, jobController.getNearbyJobs);
 
-/**
- * Get recommended jobs based on user skills
- */
 router.get('/recommendations', protect, jobController.getRecommendedJobs);
-
-/**
- * Get single job by ID
- */
-router.get('/:id', jobValidation.getJobValidation, validate, jobController.getJobById);
 
 // ============================================
 // PROTECTED ROUTES (Employer only)
+// Static segments must be registered before /:id to avoid being swallowed by the param.
 // ============================================
 
-/**
- * Create a new job posting
- * Protected route - Employer only
- */
+router.get(
+  '/employer/my-jobs',
+  protect,
+  authorize('employer'),
+  jobValidation.getEmployerJobsValidation,
+  validate,
+  jobController.getEmployerJobs
+);
+
+router.get('/employer/stats', protect, authorize('employer'), jobController.getEmployerStats);
+
 router.post(
   '/generate-description',
   protect,
@@ -62,24 +56,8 @@ router.post(
   jobController.createJob
 );
 
-/**
- * Get jobs created by employer (My Jobs)
- * Protected route - Employer only
- */
-router.get(
-  '/employer/my-jobs',
-  protect,
-  authorize('employer'),
-  jobValidation.getEmployerJobsValidation,
-  validate,
-  jobController.getEmployerJobs
-);
-
-/**
- * Get employer statistics for dashboard
- * Protected route - Employer only
- */
-router.get('/employer/stats', protect, authorize('employer'), jobController.getEmployerStats);
+// Param route must come after all static segments
+router.get('/:id', jobValidation.getJobValidation, validate, jobController.getJobById);
 
 /**
  * Update job details

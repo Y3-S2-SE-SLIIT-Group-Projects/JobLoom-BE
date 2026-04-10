@@ -76,6 +76,33 @@ const applicationSchema = new mongoose.Schema(
     interviewDate: {
       type: Date,
     },
+    interviewType: {
+      type: String,
+      enum: {
+        values: ['virtual', 'in_person'],
+        message: '{VALUE} is not a valid interview type',
+      },
+    },
+    jitsiRoomName: {
+      type: String,
+      trim: true,
+    },
+    interviewLocation: {
+      type: String,
+      trim: true,
+      maxlength: [300, 'Interview location cannot exceed 300 characters'],
+    },
+    interviewLocationNotes: {
+      type: String,
+      trim: true,
+      maxlength: [500, 'Interview location notes cannot exceed 500 characters'],
+    },
+    interviewDuration: {
+      type: Number,
+      min: [15, 'Interview must be at least 15 minutes'],
+      max: [480, 'Interview cannot exceed 8 hours'],
+      default: 30,
+    },
     withdrawalReason: {
       type: String,
       trim: true,
