@@ -302,6 +302,65 @@
           "response": []
         },
         {
+          "name": "http://localhost:3000/api/jobs/generate-description",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5YTA4MGM5MzZlMjkzMjgyNDBmY2RjMSIsImlhdCI6MTc3MjEyNjY3MywiZXhwIjoxNzcyNzMxNDczfQ.LADCFk90WqBZCbFYz1JsRGshjfZlbRZvIAq9MtAhuBA",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"title\": \"Farm Supervisor\",\r\n  \"category\": \"agriculture\",\r\n  \"jobRole\": \"Field Operations Supervisor\",\r\n  \"employmentType\": \"full-time\",\r\n  \"salaryType\": \"daily\",\r\n  \"salaryAmount\": 2500,\r\n  \"skillsRequired\": [\"team management\", \"crop planning\", \"quality control\"],\r\n  \"location\": {\r\n    \"district\": \"Kalutara\",\r\n    \"province\": \"Western\"\r\n  }\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/jobs/generate-description",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "jobs", "generate-description"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "http://localhost:3000/api/jobs/recommendations",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5OTE0NjgwZWFiMmEwZjk0ZDcwNTM3YiIsImlhdCI6MTc3MTEyODQ2MSwiZXhwIjoxNzcxNzMzMjYxfQ.cujy8BF8oxjoTGWbmvk5bTJkEzK4qWt63BUbF94P7pQ",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/api/jobs/recommendations",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "jobs", "recommendations"]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "http://localhost:3000/api/jobs/employer/my-jobs",
           "request": {
             "auth": {
