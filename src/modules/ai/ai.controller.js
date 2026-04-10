@@ -8,14 +8,14 @@ import { sendSuccess, sendError } from '../../utils/response.utils.js';
  */
 export const analyzeSkillGapController = async (req, res) => {
   try {
-    const { jobId, cvId } = req.body;
+    const { jobId, cvId, language } = req.body;
 
     if (!jobId || !cvId) {
       return sendError(res, 'jobId and cvId are required', 400);
     }
 
     const userId = req.user._id.toString();
-    const result = await analyzeSkillGap(jobId, cvId, userId);
+    const result = await analyzeSkillGap(jobId, cvId, userId, language);
 
     sendSuccess(res, 'Skill gap analysis completed', result);
   } catch (err) {
