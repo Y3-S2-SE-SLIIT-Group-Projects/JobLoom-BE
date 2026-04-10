@@ -257,6 +257,12 @@ describe('Review Routes - Integration Tests', () => {
 
       expect(res.status).toBe(404);
     });
+
+    test('should return 400 for invalid review id format', async () => {
+      const res = await request(app).get('/api/reviews/not-a-valid-id');
+
+      expect(res.status).toBe(400);
+    });
   });
 
   describe('PUT /api/reviews/:id', () => {
@@ -374,6 +380,50 @@ describe('Review Routes - Integration Tests', () => {
       const deletedReview = await Review.findById(review._id).select('+isDeleted');
       expect(deletedReview.isDeleted).toBe(true);
     });
+
+    test('should fail to delete after 24-hour window when review is not reported', async () => {
+      const review = await Review.create({
+        reviewerId: jobSeekerId,
+        revieweeId: employerId,
+        jobId,
+        reviewerType: 'job_seeker',
+        rating: 4,
+        createdAt: new Date(Date.now() - 48 * 60 * 60 * 1000),
+      });
+
+      const res = await request(app)
+        .delete(`/api/reviews/${review._id}`)
+        .set('Authorization', `Bearer ${jobSeekerToken}`);
+
+      expect(res.status).toBe(403);
+      expect(res.body.message).toContain('within 24 hours');
+    });
+
+    test('should allow admin to delete old reviews outside 24-hour window', async () => {
+      const admin = await createUserAndLogin({
+        firstName: 'Alice',
+        lastName: 'Admin',
+        email: 'admin@test.com',
+        role: 'admin',
+        phone: '94770000013',
+      });
+
+      const review = await Review.create({
+        reviewerId: jobSeekerId,
+        revieweeId: employerId,
+        jobId,
+        reviewerType: 'job_seeker',
+        rating: 4,
+        createdAt: new Date(Date.now() - 48 * 60 * 60 * 1000),
+      });
+
+      const res = await request(app)
+        .delete(`/api/reviews/${review._id}`)
+        .set('Authorization', `Bearer ${admin.token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.message).toContain('deleted');
+    });
   });
 
   describe('GET /api/reviews/user/:userId', () => {
@@ -409,6 +459,20 @@ describe('Review Routes - Integration Tests', () => {
         .query({ reviewerType: 'job_seeker' });
 
       expect(res.status).toBe(200);
+    });
+
+    test('should return 400 for invalid reviewer type query', async () => {
+      const res = await request(app)
+        .get(`/api/reviews/user/${employerId}`)
+        .query({ reviewerType: 'invalid_role' });
+
+      expect(res.status).toBe(400);
+    });
+
+    test('should return 400 for invalid user ID format', async () => {
+      const res = await request(app).get('/api/reviews/user/not-a-valid-id');
+
+      expect(res.status).toBe(400);
     });
   });
 
@@ -488,6 +552,56 @@ describe('Review Routes - Integration Tests', () => {
         res.body.data.reviews[0].reviewerId?._id || res.body.data.reviews[0].reviewerId;
       expect(reviewerId.toString()).toBe(jobSeekerId.toString());
     });
+
+    test('should return 400 for invalid user ID format', async () => {
+      const res = await request(app).get('/api/reviews/sent/not-a-valid-id');
+
+      expect(res.status).toBe(400);
+    });
+  });
+
+  describe('GET /api/reviews/employer/:employerId and /jobseeker/:jobSeekerId', () => {
+    test('should retrieve employer reviews alias endpoint', async () => {
+      await Review.create({
+        reviewerId: jobSeekerId,
+        revieweeId: employerId,
+        jobId,
+        reviewerType: 'job_seeker',
+        rating: 5,
+      });
+
+      const res = await request(app).get(`/api/reviews/employer/${employerId}`);
+
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body.data.reviews)).toBe(true);
+    });
+
+    test('should retrieve job seeker reviews alias endpoint', async () => {
+      await Review.create({
+        reviewerId: employerId,
+        revieweeId: jobSeekerId,
+        jobId,
+        reviewerType: 'employer',
+        rating: 4,
+      });
+
+      const res = await request(app).get(`/api/reviews/jobseeker/${jobSeekerId}`);
+
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body.data.reviews)).toBe(true);
+    });
+
+    test('should return 400 for invalid employer ID format', async () => {
+      const res = await request(app).get('/api/reviews/employer/not-a-valid-id');
+
+      expect(res.status).toBe(400);
+    });
+
+    test('should return 400 for invalid job seeker ID format', async () => {
+      const res = await request(app).get('/api/reviews/jobseeker/not-a-valid-id');
+
+      expect(res.status).toBe(400);
+    });
   });
 
   describe('POST /api/reviews/:id/report', () => {
@@ -541,6 +655,23 @@ describe('Review Routes - Integration Tests', () => {
 
       expect(res.status).toBe(409);
       expect(res.body.message).toContain('already reported');
+    });
+
+    test('should return 400 when report reason is too short', async () => {
+      const review = await Review.create({
+        reviewerId: jobSeekerId,
+        revieweeId: employerId,
+        jobId,
+        reviewerType: 'job_seeker',
+        rating: 1,
+      });
+
+      const res = await request(app)
+        .post(`/api/reviews/${review._id}/report`)
+        .set('Authorization', `Bearer ${employerToken}`)
+        .send({ reason: 'too short' });
+
+      expect(res.status).toBe(400);
     });
   });
 });

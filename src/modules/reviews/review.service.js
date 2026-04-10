@@ -15,7 +15,7 @@ import {
  * Business logic for review operations
  */
 
-// ─── Edit/Delete permission window ────────────────────────────────────────────
+// Edit/Delete permission window
 const EDIT_WINDOW_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 /**

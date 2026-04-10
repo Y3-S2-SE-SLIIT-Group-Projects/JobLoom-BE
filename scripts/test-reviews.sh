@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# ─────────────────────────────────────────────────────────────────────────────
+
 # JobLoom — Review API end-to-end test suite
 # Seeds fresh data automatically, then exercises all review endpoints.
 # Usage: cd JobLoom-BE && bash scripts/test-reviews.sh
-# ─────────────────────────────────────────────────────────────────────────────
+
 set -uo pipefail   # -e omitted — HTTP errors handled manually
 
 BASE="http://localhost:3008/api"
@@ -22,7 +22,7 @@ sep()   {
   echo -e "${BOLD}${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 }
 
-# ── curl helper — req <METHOD> <URL> [extra flags...]
+# curl helper — req <METHOD> <URL> [extra flags...]
 # Sets $HTTP_CODE (3-digit string) and $RES (response body)
 HTTP_CODE=""; RES=""
 req() {
@@ -59,7 +59,7 @@ except: print('')
 " 2>/dev/null || echo ""
 }
 
-# ─────────────────────────────────────────────────────────────────────────────
+
 sep "SEED — Creating fresh test data"
 SEED_OUT=$(node scripts/seed-review-test.js 2>&1)
 echo "$SEED_OUT" | grep -E '(✅|Employer ID|JobSeeker|Job 1|Job 2)' | head -10
@@ -78,7 +78,7 @@ info "seekerId    = $SEEK"
 info "job1Id      = $JOB1"
 info "job2Id      = $JOB2"
 
-# ─────────────────────────────────────────────────────────────────────────────
+
 sep "0 — Login"
 req POST "$BASE/users/login" \
   -H "Content-Type: application/json" \
@@ -92,7 +92,7 @@ req POST "$BASE/users/login" \
 EMPLOYER_TOKEN=$(echo "$RES" | python3 -c "import sys,json; print(json.load(sys.stdin)['token'])")
 pass "Employer login"
 
-# ─────────────────────────────────────────────────────────────────────────────
+
 sep "1 — Public Read (no auth required)"
 req GET "$BASE/reviews/user/$EMP"
 COUNT=$(field "len(d.get('data',{}).get('reviews',[]))")
@@ -128,7 +128,7 @@ req GET "$BASE/reviews/jobseeker/$SEEK"
 COUNT=$(field "len(d.get('data',{}).get('reviews',[]))")
 pass "[1.8] GET /reviews/jobseeker/:id      → $COUNT"
 
-# ─────────────────────────────────────────────────────────────────────────────
+
 sep "2 — Create Reviews [Protected]"
 REVIEW1_ID=""; REVIEW2_ID=""
 
@@ -160,7 +160,7 @@ req POST "$BASE/reviews" \
   -d "{\"revieweeId\":\"$SEEK\",\"jobId\":\"$JOB2\",\"reviewerType\":\"employer\",\"rating\":3,\"comment\":\"Decent worker but needed guidance.\",\"workQuality\":3,\"communication\":3,\"wouldRecommend\":false}"
 expect "[2.4] Employer → Seeker (Job 2, partial criteria)" "2xx"
 
-# ─────────────────────────────────────────────────────────────────────────────
+
 sep "3 — Get Review by ID"
 if [[ -n "$REVIEW1_ID" ]]; then
   req GET "$BASE/reviews/$REVIEW1_ID"
@@ -171,7 +171,7 @@ else
   skip "[3.1] Skipped — review1Id not captured"
 fi
 
-# ─────────────────────────────────────────────────────────────────────────────
+
 sep "4 — Pagination & Filtering"
 req GET "$BASE/reviews/user/$EMP?reviewerType=job_seeker&sort=-createdAt&page=1&limit=5"
 COUNT=$(field "len(d.get('data',{}).get('reviews',[]))")
@@ -184,7 +184,7 @@ req GET "$BASE/reviews/user/$EMP?page=1&limit=2"
 COUNT=$(field "len(d.get('data',{}).get('reviews',[]))")
 pass "[4.3] Limit=2                         → $COUNT result(s)"
 
-# ─────────────────────────────────────────────────────────────────────────────
+
 sep "5 — Update Review [Protected — own review only]"
 if [[ -n "$REVIEW1_ID" ]]; then
   req PUT "$BASE/reviews/$REVIEW1_ID" \
@@ -204,7 +204,7 @@ else
   skip "[5.1-5.2] Skipped — review1Id not captured"
 fi
 
-# ─────────────────────────────────────────────────────────────────────────────
+
 sep "6 — Report Review [Protected]"
 if [[ -n "$REVIEW1_ID" ]]; then
   req POST "$BASE/reviews/$REVIEW1_ID/report" \
@@ -216,7 +216,7 @@ else
   skip "[6.1] Skipped — review1Id not captured"
 fi
 
-# ─────────────────────────────────────────────────────────────────────────────
+
 sep "7 — Error Cases (expect failures)"
 
 req POST "$BASE/reviews" \
@@ -267,7 +267,7 @@ else
   skip "[7.6] Skipped — review1Id not captured"
 fi
 
-# ─────────────────────────────────────────────────────────────────────────────
+
 sep "8 — Final Stats Check"
 req GET "$BASE/reviews/stats/$EMP"
 echo "$RES" | python3 -c "
@@ -289,7 +289,7 @@ print('  Seeker   → avgRating:', s.get('averageRating','?'),
 " 2>/dev/null
 pass "[8.2] Seeker stats"
 
-# ─────────────────────────────────────────────────────────────────────────────
+
 sep "9 — Delete Review + Verify Gone"
 if [[ -n "$REVIEW1_ID" ]]; then
   req DELETE "$BASE/reviews/$REVIEW1_ID" \
@@ -304,7 +304,7 @@ else
   skip "[9.1-9.2] Skipped — review1Id not captured"
 fi
 
-# ─────────────────────────────────────────────────────────────────────────────
+
 sep "RESULTS"
 echo -e "  ${GREEN}Passed: $PASS_COUNT${NC}"
 echo -e "  ${RED}Failed: $FAIL_COUNT${NC}"

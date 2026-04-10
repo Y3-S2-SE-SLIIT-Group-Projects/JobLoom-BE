@@ -9,7 +9,7 @@ import mongoose from 'mongoose';
  * application.service.test.js and user.service.test.js
  */
 
-// ── Helpers ──────────────────────────────────────────────────────────
+// Helpers
 const oid = () => new mongoose.Types.ObjectId();
 
 // Fixed IDs reused across tests
@@ -17,7 +17,7 @@ const employerId = oid();
 const otherEmployerId = oid();
 const jobId = oid();
 
-// ── Mock factories ───────────────────────────────────────────────────
+// Mock factories
 
 /** Build a fake Job document returned by Job.findById */
 const makeJob = (overrides = {}) => {
@@ -42,7 +42,7 @@ const makeJob = (overrides = {}) => {
   return job;
 };
 
-// ── Module-level mocks ───────────────────────────────────────────────
+// Module-level mocks
 
 // Create a mock Job constructor that returns a proper instance with methods
 class MockJob {
@@ -133,12 +133,11 @@ const {
   hardDeleteJob,
 } = await import('../../src/modules/jobs/job.service.js');
 
-// ── Test suites ──────────────────────────────────────────────────────
+// Test suites
 
 describe('Job Service — Unit Tests', () => {
-  // ────────────────────────────────────────────────────────────────────
   // createJob
-  // ────────────────────────────────────────────────────────────────────
+
   describe('createJob', () => {
     test('should create a job successfully with valid data', async () => {
       const validJobData = {
@@ -217,9 +216,8 @@ describe('Job Service — Unit Tests', () => {
     });
   });
 
-  // ────────────────────────────────────────────────────────────────────
   // getJobById
-  // ────────────────────────────────────────────────────────────────────
+
   describe('getJobById', () => {
     test('should return the job when it exists and is active', async () => {
       const job = makeJob();
@@ -260,9 +258,8 @@ describe('Job Service — Unit Tests', () => {
     });
   });
 
-  // ────────────────────────────────────────────────────────────────────
   // getAllJobs
-  // ────────────────────────────────────────────────────────────────────
+
   describe('getAllJobs', () => {
     beforeEach(() => {
       // Default: return empty list and 0 count
@@ -377,9 +374,8 @@ describe('Job Service — Unit Tests', () => {
     });
   });
 
-  // ────────────────────────────────────────────────────────────────────
   // getJobsByEmployer
-  // ────────────────────────────────────────────────────────────────────
+
   describe('getJobsByEmployer', () => {
     test('should return only active jobs by default', async () => {
       const jobs = [makeJob()];
@@ -424,9 +420,8 @@ describe('Job Service — Unit Tests', () => {
     });
   });
 
-  // ────────────────────────────────────────────────────────────────────
   // getNearbyJobs
-  // ────────────────────────────────────────────────────────────────────
+
   describe('getNearbyJobs', () => {
     test('should return nearby jobs for valid coordinates', async () => {
       const jobs = [makeJob()];
@@ -493,9 +488,8 @@ describe('Job Service — Unit Tests', () => {
     });
   });
 
-  // ────────────────────────────────────────────────────────────────────
   // searchJobs
-  // ────────────────────────────────────────────────────────────────────
+
   describe('searchJobs', () => {
     test('should return matching jobs for valid search text', async () => {
       const jobs = [makeJob({ title: 'Farm Helper' })];
@@ -529,9 +523,8 @@ describe('Job Service — Unit Tests', () => {
     });
   });
 
-  // ────────────────────────────────────────────────────────────────────
   // getEmployerStats
-  // ────────────────────────────────────────────────────────────────────
+
   describe('getEmployerStats', () => {
     test('should return correct stats for employer', async () => {
       mockJobModel.countDocuments
@@ -561,9 +554,8 @@ describe('Job Service — Unit Tests', () => {
     });
   });
 
-  // ────────────────────────────────────────────────────────────────────
   // updateJob
-  // ────────────────────────────────────────────────────────────────────
+
   describe('updateJob', () => {
     test('should update job successfully when employer owns the job', async () => {
       const job = makeJob();
@@ -620,9 +612,8 @@ describe('Job Service — Unit Tests', () => {
     });
   });
 
-  // ────────────────────────────────────────────────────────────────────
   // closeJob
-  // ────────────────────────────────────────────────────────────────────
+
   describe('closeJob', () => {
     test('should close the job successfully when employer owns it', async () => {
       const job = makeJob();
@@ -654,9 +645,8 @@ describe('Job Service — Unit Tests', () => {
     });
   });
 
-  // ────────────────────────────────────────────────────────────────────
   // markJobAsFilled
-  // ────────────────────────────────────────────────────────────────────
+
   describe('markJobAsFilled', () => {
     test('should mark job as filled when employer owns it', async () => {
       const job = makeJob();
@@ -688,9 +678,8 @@ describe('Job Service — Unit Tests', () => {
     });
   });
 
-  // ────────────────────────────────────────────────────────────────────
   // deleteJob (soft delete)
-  // ────────────────────────────────────────────────────────────────────
+
   describe('deleteJob', () => {
     test('should soft-delete the job when employer owns it and has no applicants', async () => {
       const job = makeJob({ applicantsCount: 0 });
@@ -733,9 +722,8 @@ describe('Job Service — Unit Tests', () => {
     });
   });
 
-  // ────────────────────────────────────────────────────────────────────
   // hardDeleteJob
-  // ────────────────────────────────────────────────────────────────────
+
   describe('hardDeleteJob', () => {
     test('should permanently delete a job', async () => {
       const job = makeJob();

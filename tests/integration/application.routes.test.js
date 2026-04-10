@@ -47,7 +47,7 @@ describe('Application Routes - Integration Tests', () => {
     return { token: loginRes.body.token, userId: user._id.toString() };
   };
 
-  // ── Setup & teardown ─────────────────────────────────────────────
+  // Setup & teardown
 
   beforeAll(async () => {
     const testDbUri = process.env.MONGO_TEST_URI || 'mongodb://localhost:27017/jobloom-test';
@@ -103,7 +103,7 @@ describe('Application Routes - Integration Tests', () => {
     jobId = job._id;
   });
 
-  // ── POST /api/applications ───────────────────────────────────────
+  // POST /api/applications
 
   describe('POST /api/applications', () => {
     test('should allow a job seeker to apply for a job', async () => {
@@ -182,7 +182,7 @@ describe('Application Routes - Integration Tests', () => {
     });
   });
 
-  // ── GET /api/applications/my-applications ────────────────────────
+  // GET /api/applications/my-applications
 
   describe('GET /api/applications/my-applications', () => {
     test('should return the job seekers applications with pagination', async () => {
@@ -268,7 +268,7 @@ describe('Application Routes - Integration Tests', () => {
     });
   });
 
-  // ── GET /api/applications/job/:jobId ─────────────────────────────
+  // GET /api/applications/job/:jobId
 
   describe('GET /api/applications/job/:jobId', () => {
     test('should let the employer view applicants for their job', async () => {
@@ -312,7 +312,7 @@ describe('Application Routes - Integration Tests', () => {
     });
   });
 
-  // ── PATCH /api/applications/:id/status ───────────────────────────
+  // PATCH /api/applications/:id/status
 
   describe('PATCH /api/applications/:id/status', () => {
     let applicationId;
@@ -411,7 +411,7 @@ describe('Application Routes - Integration Tests', () => {
     });
   });
 
-  // ── PATCH /api/applications/:id/withdraw ─────────────────────────
+  // PATCH /api/applications/:id/withdraw
 
   describe('PATCH /api/applications/:id/withdraw', () => {
     let applicationId;
@@ -494,7 +494,7 @@ describe('Application Routes - Integration Tests', () => {
     });
   });
 
-  // ── GET /api/applications/check/:jobId/:userId ───────────────────
+  // GET /api/applications/check/:jobId/:userId
 
   describe('GET /api/applications/check/:jobId/:userId (review eligibility)', () => {
     test('should return true when an accepted application exists', async () => {
@@ -538,7 +538,7 @@ describe('Application Routes - Integration Tests', () => {
     });
   });
 
-  // ── GET /api/applications/:id ────────────────────────────────────
+  // GET /api/applications/:id
 
   describe('GET /api/applications/:id', () => {
     let applicationId;
@@ -606,7 +606,7 @@ describe('Application Routes - Integration Tests', () => {
     });
   });
 
-  // ── PATCH /api/applications/:id/interview ─────────────────────────
+  // PATCH /api/applications/:id/interview
 
   describe('PATCH /api/applications/:id/interview', () => {
     let applicationId;
@@ -704,7 +704,7 @@ describe('Application Routes - Integration Tests', () => {
     });
   });
 
-  // ── GET /api/applications/:id/interview-join-context ──────────────
+  // GET /api/applications/:id/interview-join-context
 
   describe('GET /api/applications/:id/interview-join-context', () => {
     let applicationId;
@@ -778,7 +778,7 @@ describe('Application Routes - Integration Tests', () => {
     });
   });
 
-  // ── DELETE /api/applications/:id/interview ────────────────────────
+  // DELETE /api/applications/:id/interview
 
   describe('DELETE /api/applications/:id/interview', () => {
     let applicationId;
@@ -828,7 +828,7 @@ describe('Application Routes - Integration Tests', () => {
     });
   });
 
-  // ── Full workflow: apply → review → accept → withdraw fails ──────
+  // Full workflow: apply → review → accept → withdraw fails
 
   describe('Full application lifecycle', () => {
     test('apply → employer accepts → seeker cannot withdraw', async () => {

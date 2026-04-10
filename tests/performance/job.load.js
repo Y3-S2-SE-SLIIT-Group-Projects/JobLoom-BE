@@ -28,7 +28,7 @@ import http from 'k6/http';
 import { check, sleep, group } from 'k6';
 import { Counter, Rate, Trend } from 'k6/metrics';
 
-// ── Custom metrics ────────────────────────────────────────────────────
+// Custom metrics
 const jobCreateErrors = new Counter('job_create_errors');
 const jobListErrors = new Counter('job_list_errors');
 const jobFetchErrors = new Counter('job_fetch_errors');
@@ -40,7 +40,7 @@ const jobListSuccess = new Rate('job_list_success_rate');
 const jobCreateDuration = new Trend('job_create_duration', true);
 const jobListDuration = new Trend('job_list_duration', true);
 
-// ── Configuration ─────────────────────────────────────────────────────
+// Configuration
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:3000/api';
 const SCENARIO = __ENV.SCENARIO || 'load'; // 'load' | 'spike' | 'soak'
 
@@ -88,10 +88,10 @@ export const options = {
   },
 };
 
-// ── Shared headers ────────────────────────────────────────────────────
+// Shared headers
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
-// ── Helper: register & log in to get a token ─────────────────────────
+// Helper: register & log in to get a token
 function getAuthToken() {
   const uniqueId = Math.floor(Math.random() * 10_000_000);
   const email = `perf-employer-${uniqueId}@loadtest.com`;
@@ -124,7 +124,7 @@ function getAuthToken() {
   }
 }
 
-// ── Helper: create a job and return its ID ────────────────────────────
+// Helper: create a job and return its ID
 function createJob(token) {
   if (!token) return null;
 
@@ -166,13 +166,13 @@ function createJob(token) {
   }
 }
 
-// ── Default scenario (one iteration per VU) ───────────────────────────
+// Default scenario (one iteration per VU)
 export default function () {
   // Each VU gets its own token and job
   const token = getAuthToken();
   let jobId = null;
 
-  // ── Group 1: Public job listing ──────────────────────────────────
+  // Group 1: Public job listing
   group('Public Job Listing', () => {
     const start = Date.now();
     const res = http.get(`${BASE_URL}/jobs`);
@@ -202,7 +202,7 @@ export default function () {
 
   sleep(0.5);
 
-  // ── Group 2: Filtered listing (category + status) ────────────────
+  // Group 2: Filtered listing (category + status)
   group('Filtered Job Listing', () => {
     const res = http.get(`${BASE_URL}/jobs?category=agriculture&status=open&limit=10`);
 
@@ -213,14 +213,14 @@ export default function () {
 
   sleep(0.5);
 
-  // ── Group 3: Employer creates a job ──────────────────────────────
+  // Group 3: Employer creates a job
   group('Employer Creates Job', () => {
     jobId = createJob(token);
   });
 
   sleep(0.5);
 
-  // ── Group 4: Fetch the newly created job by ID ───────────────────
+  // Group 4: Fetch the newly created job by ID
   if (jobId) {
     group('Fetch Single Job', () => {
       const res = http.get(`${BASE_URL}/jobs/${jobId}`);
@@ -241,7 +241,7 @@ export default function () {
     sleep(0.5);
   }
 
-  // ── Group 5: Employer lists own jobs ─────────────────────────────
+  // Group 5: Employer lists own jobs
   if (token) {
     group("Employer's Own Jobs", () => {
       const res = http.get(`${BASE_URL}/jobs/employer/my-jobs`, {
@@ -263,7 +263,7 @@ export default function () {
     sleep(0.5);
   }
 
-  // ── Group 6: Employer views dashboard stats ───────────────────────
+  // Group 6: Employer views dashboard stats
   if (token) {
     group('Employer Stats', () => {
       const res = http.get(`${BASE_URL}/jobs/employer/stats`, {

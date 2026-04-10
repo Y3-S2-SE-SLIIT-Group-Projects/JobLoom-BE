@@ -74,6 +74,19 @@ export const generateJobDescription = async (req, res) => {
 export const getAllJobs = async (req, res) => {
   const result = await jobService.getAllJobs(req.query);
 
+  if (req.query.fields) {
+    const allowedFields = req.query.fields.split(',').map((f) => f.trim());
+    allowedFields.push('_id');
+    result.jobs = result.jobs.map((job) => {
+      const obj = typeof job.toObject === 'function' ? job.toObject() : { ...job };
+      const filtered = {};
+      for (const field of allowedFields) {
+        if (field in obj) filtered[field] = obj[field];
+      }
+      return filtered;
+    });
+  }
+
   sendSuccess(res, 'Jobs retrieved successfully', result);
 };
 
