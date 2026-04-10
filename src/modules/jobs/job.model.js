@@ -31,7 +31,6 @@ const jobSchema = new Schema(
       required: false,
       trim: true,
       minlength: [20, 'Description must be at least 20 characters long'],
-      maxlength: [2000, 'Description cannot exceed 2000 characters'],
     },
 
     // Job Category (Expanded)
@@ -91,6 +90,14 @@ const jobSchema = new Schema(
         message: '{VALUE} is not a valid category',
       },
       index: true,
+    },
+
+    // Preserve exact user-typed category label when category falls back to "other"
+    categoryLabel: {
+      type: String,
+      required: false,
+      trim: true,
+      maxlength: [100, 'Category label cannot exceed 100 characters'],
     },
 
     // Job Role

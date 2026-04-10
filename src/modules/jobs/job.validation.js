@@ -89,13 +89,19 @@ export const createJobValidation = [
   body('description')
     .optional()
     .trim()
-    .isLength({ min: 20, max: 2000 })
-    .withMessage('Description must be between 20 and 2000 characters if provided'),
+    .isLength({ min: 20 })
+    .withMessage('Description must be at least 20 characters if provided'),
 
   body('category')
     .optional()
     .isIn(JOB_CATEGORIES)
     .withMessage(`Category must be one of: ${JOB_CATEGORIES.join(', ')}`),
+
+  body('categoryLabel')
+    .optional()
+    .trim()
+    .isLength({ min: 1, max: 100 })
+    .withMessage('Category label must be between 1 and 100 characters if provided'),
 
   body('jobRole')
     .optional()
@@ -182,13 +188,19 @@ export const updateJobValidation = [
   body('description')
     .optional()
     .trim()
-    .isLength({ min: 20, max: 2000 })
-    .withMessage('Description must be between 20 and 2000 characters'),
+    .isLength({ min: 20 })
+    .withMessage('Description must be at least 20 characters'),
 
   body('category')
     .optional()
     .isIn(JOB_CATEGORIES)
     .withMessage(`Category must be one of: ${JOB_CATEGORIES.join(', ')}`),
+
+  body('categoryLabel')
+    .optional()
+    .trim()
+    .isLength({ min: 1, max: 100 })
+    .withMessage('Category label must be between 1 and 100 characters if provided'),
 
   body('jobRole')
     .optional()
