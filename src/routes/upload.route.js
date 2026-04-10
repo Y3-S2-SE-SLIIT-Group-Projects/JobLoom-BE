@@ -1,13 +1,36 @@
 import express from 'express';
-import fs from 'fs';
 import { URL } from 'url';
-import upload from '../middleware/uploads/fileUpload.js';
-import { uploadToCloudinary } from '../services/upload.service.js';
+import multer from 'multer';
+import path from 'path';
+import { uploadBufferToCloudinary } from '../services/upload.service.js';
 import HttpException from '../models/http-exception.js';
 import cloudinary from '../config/cloudinary.js';
 import { protect } from '../middleware/auth/authMiddleware.js';
 
 const router = express.Router();
+
+const checkFileType = (file, cb) => {
+  const allowedExt = ['.jpg', '.jpeg', '.png', '.pdf', '.doc', '.docx'];
+  const ext = path.extname(file.originalname).toLowerCase();
+
+  const allowedMime = [
+    'image/jpeg',
+    'image/png',
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  ];
+
+  const ok = allowedExt.includes(ext) && allowedMime.includes(file.mimetype);
+  if (ok) return cb(null, true);
+  cb(new Error('Only JPG, JPEG, PNG, PDF, DOC, DOCX are allowed!'));
+};
+
+const cloudUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 15 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => checkFileType(file, cb),
+});
 
 const parseCloudinaryDeliveryFromUrl = (rawUrl) => {
   const parsed = new URL(rawUrl);
@@ -85,44 +108,35 @@ router.get('/signed-url', protect, async (req, res) => {
   res.json({ url: signedUrl, expiresAt: expires_at });
 });
 
-router.post('/', upload.single('file'), async (req, res) => {
+router.post('/', cloudUpload.single('file'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ message: 'No file uploaded' });
   }
 
+  const folder = req.body?.folder;
   try {
-    const folder = req.body?.folder;
-    try {
-      const result = await uploadToCloudinary(req.file.path, folder, req.file.mimetype);
-      res.json(result);
-    } catch (err) {
-      const providerMessage = err?.error?.message || err?.message || String(err);
-      const providerName = err?.error?.name;
-      const providerHttpCode = err?.error?.http_code;
+    const result = await uploadBufferToCloudinary(req.file.buffer, folder, req.file.mimetype);
+    res.json(result);
+  } catch (err) {
+    const providerMessage = err?.error?.message || err?.message || String(err);
+    const providerName = err?.error?.name;
+    const providerHttpCode = err?.error?.http_code;
 
-      const isTimeout =
-        providerName === 'TimeoutError' ||
-        (typeof providerMessage === 'string' && providerMessage.toLowerCase().includes('timeout'));
+    const isTimeout =
+      providerName === 'TimeoutError' ||
+      (typeof providerMessage === 'string' && providerMessage.toLowerCase().includes('timeout'));
 
-      throw new HttpException(
-        isTimeout ? 504 : 502,
-        isTimeout
-          ? 'Upload failed: Cloudinary request timed out'
-          : `Upload failed: ${providerMessage}`,
-        {
-          provider: 'cloudinary',
-          providerName,
-          providerHttpCode,
-        }
-      );
-    }
-  } finally {
-    // Best-effort cleanup of local temp file
-    try {
-      fs.unlinkSync(req.file.path);
-    } catch {
-      // ignore
-    }
+    throw new HttpException(
+      isTimeout ? 504 : 502,
+      isTimeout
+        ? 'Upload failed: Cloudinary request timed out'
+        : `Upload failed: ${providerMessage}`,
+      {
+        provider: 'cloudinary',
+        providerName,
+        providerHttpCode,
+      }
+    );
   }
 });
 
