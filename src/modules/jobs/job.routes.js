@@ -4,6 +4,8 @@ import * as jobValidation from './job.validation.js';
 import { protect } from '../../middleware/auth/authMiddleware.js';
 import { authorize } from '../../middleware/auth/roleMiddleware.js';
 import { validate } from '../../middleware/validation.middleware.js';
+import lowDataMiddleware from '../../middleware/low-data.middleware.js';
+import cacheHeaders from '../../middleware/cache-headers.middleware.js';
 
 const router = express.Router();
 
@@ -16,7 +18,20 @@ const router = express.Router();
 // PUBLIC ROUTES
 // ============================================
 
-router.get('/', jobValidation.getJobsValidation, validate, jobController.getAllJobs);
+/**
+ * Get all jobs with filtering, searching, sorting, and pagination
+ */
+router.get(
+  '/',
+  lowDataMiddleware({
+    maxLimit: 5,
+    defaultFields: 'title,category,location,salaryAmount,salaryType,status,employerId,createdAt',
+  }),
+  cacheHeaders(300),
+  jobValidation.getJobsValidation,
+  validate,
+  jobController.getAllJobs
+);
 
 router.get('/nearby', jobValidation.getNearbyJobsValidation, validate, jobController.getNearbyJobs);
 
@@ -57,7 +72,13 @@ router.post(
 );
 
 // Param route must come after all static segments
-router.get('/:id', jobValidation.getJobValidation, validate, jobController.getJobById);
+router.get(
+  '/:id',
+  cacheHeaders(600),
+  jobValidation.getJobValidation,
+  validate,
+  jobController.getJobById
+);
 
 /**
  * Update job details
